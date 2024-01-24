@@ -1,0 +1,26 @@
+#!/bin/sh -eu
+
+asm="$1"
+name="${asm%.asm}"
+
+gcc_run() {
+	gcc -o sim8086 sim8086.c
+	./sim8086 "$1"
+	rm sim8086
+}
+
+diffb() {
+	xxd "$1" > b1.hex
+	xxd "$2" > b2.hex
+	diff b1.hex b2.hex
+	rm b1.hex b2.hex
+}
+
+nasm "$asm"
+
+gcc_run "$name" | tee out.asm
+nasm out.asm
+
+diffb out "$name"
+
+rm out out.asm "$name"
