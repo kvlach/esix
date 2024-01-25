@@ -125,10 +125,10 @@ char *effective_addr_fmt(effective_addr ea, mode mod, int16_t disp) {
 	case EFFECTIVE_ADDR_BX_DI: sprintf(fmt, "[bx + di"); break;
 	case EFFECTIVE_ADDR_BP_SI: sprintf(fmt, "[bp + si"); break;
 	case EFFECTIVE_ADDR_BP_DI: sprintf(fmt, "[bp + di"); break;
-	case EFFECTIVE_ADDR_SI:   sprintf(fmt, "[si");      break;
-	case EFFECTIVE_ADDR_DI:   sprintf(fmt, "[di");      break;
-	case EFFECTIVE_ADDR_BP:   sprintf(fmt, "[bp");      break;
-	case EFFECTIVE_ADDR_BX:   sprintf(fmt, "[bx");      break;
+	case EFFECTIVE_ADDR_SI:    sprintf(fmt, "[si");      break;
+	case EFFECTIVE_ADDR_DI:    sprintf(fmt, "[di");      break;
+	case EFFECTIVE_ADDR_BP:    sprintf(fmt, "[bp");      break;
+	case EFFECTIVE_ADDR_BX:    sprintf(fmt, "[bx");      break;
 	}
 
 	switch (mod) {
