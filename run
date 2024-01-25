@@ -4,9 +4,9 @@ asm="$1"
 name="${asm%.asm}"
 
 gcc_run() {
-	gcc -o sim8086 sim8086.c
-	./sim8086 "$1"
-	rm sim8086
+	gcc -o sim86 sim86.c
+	./sim86 "$1"
+	rm sim86
 }
 
 diffb() {
