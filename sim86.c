@@ -179,9 +179,7 @@ register_memory register_memory_match(byte b, const mode mod, const bool w) {
 	}
 
 	// else MODE_REGISTER
-	b &= 0b00000111;
-	b |= w << 3;
-	return (register_memory){ .mod = mod, .reg = registers[b] };
+	return (register_memory){ .mod = mod, .reg = register_match(b&0b00000111, w) };
 }
 
 const char *register_memory_fmt(register_memory r_m) {
