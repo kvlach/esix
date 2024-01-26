@@ -53,10 +53,11 @@ const char *opcode_fmt(const opcode op) {
 	}
 }
 
-register_ registers[16] = {REGISTER_AL, REGISTER_CL, REGISTER_DL, REGISTER_BL,
-			   REGISTER_AH, REGISTER_CH, REGISTER_DH, REGISTER_BH,
-			   REGISTER_AX, REGISTER_CX, REGISTER_DX, REGISTER_BX,
-			   REGISTER_SP, REGISTER_BP, REGISTER_SI, REGISTER_DI};
+const register_ registers[16] = {
+    REGISTER_AL, REGISTER_CL, REGISTER_DL, REGISTER_BL,
+    REGISTER_AH, REGISTER_CH, REGISTER_DH, REGISTER_BH,
+    REGISTER_AX, REGISTER_CX, REGISTER_DX, REGISTER_BX,
+    REGISTER_SP, REGISTER_BP, REGISTER_SI, REGISTER_DI};
 
 register_ register_match(const byte b, const bool w) {
 	return registers[b | w << 3];
@@ -83,7 +84,7 @@ const char *register_fmt(const register_ r) {
 	}
 }
 
-mode modes[4] = {
+const mode modes[4] = {
     MODE_MEMORY_NO_DISPLACEMENT,
     MODE_MEMORY_8BIT_DISPLACEMENT,
     MODE_MEMORY_16BIT_DISPLACEMENT,
@@ -94,7 +95,7 @@ mode mode_match(const byte b) {
 	return modes[b >> 6];
 }
 
-effective_addr effective_addrs[8] = {
+const effective_addr effective_addrs[8] = {
     EFFECTIVE_ADDR_BX_SI,
     EFFECTIVE_ADDR_BX_DI,
     EFFECTIVE_ADDR_BP_SI,
