@@ -24,33 +24,14 @@ int i = 0;
 
 char peek() { return buf[++i]; }
 
+const char *opcodes_fmt[24] = {
+	"mov", "add", "cmp", "sub", "je",   "jl",    "jle",    "jb",
+	"jbe", "jp",  "jo",  "js",  "jne",  "jnl",   "jg",     "jnb",
+	"ja",  "jnp", "jno", "jns", "loop", "loopz", "loopnz", "jcxz",
+};
+
 const char *opcode_fmt(const opcode op) {
-	switch (op) {
-	case OPCODE_MOV:    return "mov";
-	case OPCODE_ADD:    return "add";
-	case OPCODE_CMP:    return "cmp";
-	case OPCODE_SUB:    return "sub";
-	case OPCODE_JE:     return "je";
-	case OPCODE_JL:     return "jl";
-	case OPCODE_JLE:    return "jle";
-	case OPCODE_JB:     return "jb";
-	case OPCODE_JBE:    return "jbe";
-	case OPCODE_JP:     return "jp";
-	case OPCODE_JO:     return "jo";
-	case OPCODE_JS:     return "js";
-	case OPCODE_JNE:    return "jne";
-	case OPCODE_JNL:    return "jnl";
-	case OPCODE_JG:     return "jg";
-	case OPCODE_JNB:    return "jnb";
-	case OPCODE_JA:     return "ja";
-	case OPCODE_JNP:    return "jnp";
-	case OPCODE_JNO:    return "jno";
-	case OPCODE_JNS:    return "jns";
-	case OPCODE_LOOP:   return "loop";
-	case OPCODE_LOOPZ:  return "loopz";
-	case OPCODE_LOOPNZ: return "loopnz";
-	case OPCODE_JCXZ:   return "jcxz";
-	}
+	return opcodes_fmt[op];
 }
 
 const register_ registers[16] = {
@@ -59,29 +40,18 @@ const register_ registers[16] = {
     REGISTER_AX, REGISTER_CX, REGISTER_DX, REGISTER_BX,
     REGISTER_SP, REGISTER_BP, REGISTER_SI, REGISTER_DI};
 
+const char *registers_fmt[16] = {
+    "al", "cl", "dl", "bl",
+    "ah", "ch", "dh", "bh",
+    "ax", "cx", "dx", "bx",
+    "sp", "bp", "si", "di"};
+
 register_ register_match(const byte b, const bool w) {
 	return registers[b | w << 3];
 }
 
 const char *register_fmt(const register_ r) {
-	switch (r) {
-	case REGISTER_AL: return "al";
-	case REGISTER_CL: return "cl";
-	case REGISTER_DL: return "dl";
-	case REGISTER_BL: return "bl";
-	case REGISTER_AH: return "ah";
-	case REGISTER_CH: return "ch";
-	case REGISTER_DH: return "dh";
-	case REGISTER_BH: return "bh";
-	case REGISTER_AX: return "ax";
-	case REGISTER_CX: return "cx";
-	case REGISTER_DX: return "dx";
-	case REGISTER_BX: return "bx";
-	case REGISTER_SP: return "sp";
-	case REGISTER_BP: return "bp";
-	case REGISTER_SI: return "si";
-	case REGISTER_DI: return "di";
-	}
+	return registers_fmt[r];
 }
 
 const mode modes[4] = {
