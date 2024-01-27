@@ -1,0 +1,9 @@
+#!/bin/sh -eu
+
+dir="$1"
+
+./run "$dir/listing_0037_single_register_mov.asm"
+./run "$dir/listing_0038_many_register_mov.asm"
+./run "$dir/listing_0039_more_movs.asm"
+./run "$dir/listing_0040_challenge_movs.asm"
+./run "$dir/listing_0041_add_sub_cmp_jnz.asm"
