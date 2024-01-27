@@ -76,6 +76,17 @@ const effective_addr effective_addrs[8] = {
     EFFECTIVE_ADDR_BX,
 };
 
+const char *effective_addrs_fmt[8] = {
+    "bx + si",
+    "bx + di",
+    "bp + si",
+    "bp + di",
+    "si",
+    "di",
+    "bp",
+    "bx",
+};
+
 effective_addr effective_addr_match(byte b, const mode mod) {
 	b &= 0b00000111;
 	if (mod == MODE_MEMORY_NO_DISPLACEMENT && b == 0b00000110) {
@@ -85,43 +96,32 @@ effective_addr effective_addr_match(byte b, const mode mod) {
 }
 
 char *effective_addr_fmt(effective_addr ea, mode mod, int16_t disp) {
-	// TODO: more sensible number of bytes
-	char *fmt = (char *)malloc(100);
+	// Max number of required bytes:
+	//   "[]" -> 2 bytes
+	//   "bx + si" -> 7 bytes
+	//   " + " or " - " -> 3 bytes
+	//   2**16 = 65536 -> 5 bytes
+	// A total of 17 bytes.
+	char *fmt = (char *)malloc(17);
 	if (fmt == NULL) {
 		return NULL;
 	}
 
-	switch (ea) {
-	case EFFECTIVE_ADDR_BX_SI: sprintf(fmt, "[bx + si"); break;
-	case EFFECTIVE_ADDR_BX_DI: sprintf(fmt, "[bx + di"); break;
-	case EFFECTIVE_ADDR_BP_SI: sprintf(fmt, "[bp + si"); break;
-	case EFFECTIVE_ADDR_BP_DI: sprintf(fmt, "[bp + di"); break;
-	case EFFECTIVE_ADDR_SI:    sprintf(fmt, "[si");      break;
-	case EFFECTIVE_ADDR_DI:    sprintf(fmt, "[di");      break;
-	case EFFECTIVE_ADDR_BP:    sprintf(fmt, "[bp");      break;
-	case EFFECTIVE_ADDR_BX:    sprintf(fmt, "[bx");      break;
+	if (ea == EFFECTIVE_ADDR_DIRECT_ADDR) {
+		sprintf(fmt, "[%d]", disp);
+		return fmt;
 	}
 
-	switch (mod) {
-	case MODE_MEMORY_NO_DISPLACEMENT:
-		if (ea == EFFECTIVE_ADDR_DIRECT_ADDR) {
-			sprintf(fmt + strlen(fmt), "[%d]", disp);
-		} else {
-			strcat(fmt, "]");
-		}
-		break;
+	const char *ea_fmt = effective_addrs_fmt[ea];
 
-	case MODE_MEMORY_8BIT_DISPLACEMENT:
-	case MODE_MEMORY_16BIT_DISPLACEMENT:
-		if (disp == 0) {
-			strcat(fmt, "]");
-		} else if (disp > 0) {
-			sprintf(fmt + strlen(fmt), " + %d]", disp);
-		} else {
-			sprintf(fmt + strlen(fmt), " - %d]", -disp);
-		}
-		break;
+	if (mod == MODE_MEMORY_NO_DISPLACEMENT || disp == 0) {
+		sprintf(fmt, "[%s]", ea_fmt);
+	} else if (disp > 0) {
+		sprintf(fmt, "[%s + %d]", ea_fmt, disp);
+	} else {
+		sprintf(fmt, "[%s - %d]", ea_fmt, -disp);
 	}
+
 	return fmt;
 }
 
