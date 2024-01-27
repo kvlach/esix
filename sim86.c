@@ -47,7 +47,7 @@ const char *registers_fmt[16] = {
     "sp", "bp", "si", "di"};
 
 register_ register_match(const byte b, const bool w) {
-	return registers[b | w << 3];
+	return registers[w << 3 | b];
 }
 
 const char *register_fmt(const register_ r) {
