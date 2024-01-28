@@ -56,7 +56,7 @@ const char *registers_fmt[16] = {
     "sp", "bp", "si", "di"};
 
 register_ register_match(const byte b, const bool w) {
-	return registers[w << 3 | b];
+	return registers[(w << 3) | (b & 0b111)];
 }
 
 const char *register_fmt(const register_ r) {
@@ -176,7 +176,7 @@ register_memory register_memory_match(byte b, const mode mod, const bool w) {
 	}
 
 	// else MODE_REGISTER
-	return (register_memory){ .mod = mod, .reg = register_match(b&0b00000111, w) };
+	return (register_memory){ .mod = mod, .reg = register_match(b, w) };
 }
 
 const char *register_memory_fmt(register_memory r_m) {
@@ -209,7 +209,7 @@ void reg_mem_with_reg_either(const opcode op, byte b) {
 
 	b = peek();
 	mode mod = mode_match(b);
-	register_ reg = register_match(((b & 0b00111000) >> 3), w);
+	register_ reg = register_match(b >> 3, w);
 	register_memory r_m = register_memory_match(b, mod, w);
 
 	if (d == 0) {
@@ -311,7 +311,7 @@ void seg_reg_print(const opcode op, const byte b) {
 }
 
 void reg_print(const opcode op, const byte b) {
-	register_ reg = register_match(b & 0b111, 1);
+	register_ reg = register_match(b, 1);
 	printf("%s %s\n", opcode_fmt(op), register_fmt(reg));
 }
 
@@ -447,7 +447,7 @@ int main(int argc, char *argv[]) {
 		case 0b01010000: reg_print(OPCODE_PUSH, b); break;
 		case 0b01011000: reg_print(OPCODE_POP, b); break;
 		case 0b10010000:
-			reg = register_match(b & 0b111, 1);
+			reg = register_match(b, 1);
 			printf("%s ax, %s\n", opcode_fmt(OPCODE_XCHG), register_fmt(reg));
 			break;
 		}
@@ -458,7 +458,7 @@ int main(int argc, char *argv[]) {
 			op = OPCODE_MOV;
 
 			w = nth(b, 3);
-			reg = register_match(b & 0b00000111, w);
+			reg = register_match(b, w);
 
 			b1 = peek();
 			if (w == 0) {
