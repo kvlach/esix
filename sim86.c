@@ -444,6 +444,24 @@ int main(int argc, char *argv[]) {
 
 		case 0b00000100: immediate_to_accumulator(OPCODE_ADD, b); break;
 		case 0b00010100: immediate_to_accumulator(OPCODE_ADC, b); break;
+
+		case 0b11111110:
+			if ((buf[i+1] & 0b00111000) == 0b00000000) {
+				w = nth(b, 0);
+				b = peek();
+				mode mod = mode_match(b);
+				register_memory r_m = register_memory_match(b, mod, w);
+				if (w == 0) {
+					printf("%s byte %s\n", opcode_fmt(OPCODE_INC), register_memory_fmt(r_m));
+				} else {
+					printf("%s word %s\n", opcode_fmt(OPCODE_INC), register_memory_fmt(r_m));
+				}
+				i++;
+				continue;
+			}
+
+			break;
+
 		case 0b00101100: immediate_to_accumulator(OPCODE_SUB, b); break;
 		case 0b00111100: immediate_to_accumulator(OPCODE_CMP, b); break;
 
@@ -513,6 +531,7 @@ int main(int argc, char *argv[]) {
 			reg = register_match(b, 1);
 			printf("%s ax, %s\n", opcode_fmt(OPCODE_XCHG), register_fmt(reg));
 			break;
+		case 0b01000000: reg_print(OPCODE_INC, b); break;
 		}
 
 		// first 4 bits
