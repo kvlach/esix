@@ -382,6 +382,25 @@ int main(int argc, char *argv[]) {
 		case 0b11000110: immediate_to_reg_mem(OPCODE_MOV, b); break;
 		case 0b10000110: reg_mem_with_reg_either(OPCODE_XCHG, b); break;
 
+		case 0b11100100:
+			// little endian
+			w = nth(b, 0);
+			if (w == 0) {
+				printf("%s al, %d\n", opcode_fmt(OPCODE_IN), (byte)peek());
+			} else {
+				printf("%s ax, %d\n", opcode_fmt(OPCODE_IN), (byte)peek());
+			}
+			break;
+		case 0b11101100:
+			// little endian
+			w = nth(b, 0);
+			if (w == 0) {
+				printf("%s al, dx\n", opcode_fmt(OPCODE_IN));
+			} else {
+				printf("%s ax, dx\n", opcode_fmt(OPCODE_IN));
+			}
+			break;
+
 		case 0b00000100: immediate_to_accumulator(OPCODE_ADD, b); break;
 		case 0b00101100: immediate_to_accumulator(OPCODE_SUB, b); break;
 		case 0b00111100: immediate_to_accumulator(OPCODE_CMP, b); break;
