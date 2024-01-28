@@ -353,8 +353,16 @@ int main(int argc, char *argv[]) {
 
 		// first 8 bits
 		switch (b & 0b11111111) {
-		case 0b11111111: reg_mem_print(OPCODE_PUSH, peek()); break;
-		case 0b10001111: reg_mem_print(OPCODE_POP, peek()); break;
+		case 0b11111111:
+			if ((buf[i+1] & 0b00111000) == 0b00110000) {
+				reg_mem_print(OPCODE_PUSH, peek());
+			}
+			break;
+		case 0b10001111:
+			if ((buf[i+1] & 0b00111000) == 0b00000000) {
+				reg_mem_print(OPCODE_POP, peek());
+			}
+			break;
 		case 0b11010111: printf("%s\n", opcode_fmt(OPCODE_XLAT)); break;
 
 		// xor to flip the pretend d bit
