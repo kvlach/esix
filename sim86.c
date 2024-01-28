@@ -299,6 +299,22 @@ void jump(opcode op) {
 	}
 }
 
+void reg_mem_print(const opcode op, const byte b) {
+	mode mod = mode_match(b);
+	register_memory r_m = register_memory_match(b, mod, 1);
+	printf("%s word %s\n", opcode_fmt(op), register_memory_fmt(r_m));
+}
+
+void seg_reg_print(const opcode op, const byte b) {
+	segment_register sr = segment_register_match((b & 0b00011000) >> 3);
+	printf("%s %s\n", opcode_fmt(op), segment_register_fmt(sr));
+}
+
+void reg_print(const opcode op, const byte b) {
+	register_ reg = register_match(b & 0b111, 1);
+	printf("%s %s\n", opcode_fmt(op), register_fmt(reg));
+}
+
 int main(int argc, char *argv[]) {
 	if (argc < 2) {
 		printf("Expected filename\n");
@@ -337,13 +353,8 @@ int main(int argc, char *argv[]) {
 
 		// first 8 bits
 		switch (b & 0b11111111) {
-		case 0b11111111:
-			b = peek();
-			mode mod = mode_match(b);
-			register_memory r_m = register_memory_match(b, mod, w);
-			printf("%s word %s\n", opcode_fmt(OPCODE_PUSH), register_memory_fmt(r_m));
-			break;
-
+		case 0b11111111: reg_mem_print(OPCODE_PUSH, peek()); break;
+		case 0b10001111: reg_mem_print(OPCODE_POP, peek()); break;
 		case 0b01110100: jump(OPCODE_JE); break;
 		case 0b01111100: jump(OPCODE_JL); break;
 		case 0b01111110: jump(OPCODE_JLE); break;
@@ -426,17 +437,14 @@ int main(int argc, char *argv[]) {
 		}
 
 		switch (b & 0b11100111) {
-		case 0b00000110:
-			sr = segment_register_match((b & 0b00011000) >> 3);
-			printf("%s %s\n", opcode_fmt(OPCODE_PUSH), segment_register_fmt(sr));
+		case 0b00000110: seg_reg_print(OPCODE_PUSH, b); break;
+		case 0b00000111: seg_reg_print(OPCODE_POP, b); break;
 		}
 
 		// first 5 bits
 		switch (b & 0b11111000) {
-		case 0b01010000:
-			reg = register_match(b & 0b111, 1);
-			printf("%s %s\n", opcode_fmt(OPCODE_PUSH), register_fmt(reg));
-			break;
+		case 0b01010000: reg_print(OPCODE_PUSH, b); break;
+		case 0b01011000: reg_print(OPCODE_POP, b); break;
 		}
 
 		// first 4 bits
