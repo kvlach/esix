@@ -377,6 +377,9 @@ int main(int argc, char *argv[]) {
 		case 0b10011100: printf("%s\n", opcode_fmt(OPCODE_PUSHF)); break;
 		case 0b10011101: printf("%s\n", opcode_fmt(OPCODE_POPF)); break;
 
+		case 0b00110111: printf("%s\n", opcode_fmt(OPCODE_AAA)); break;
+		case 0b00100111: printf("%s\n", opcode_fmt(OPCODE_DAA)); break;
+
 		case 0b01110100: jump(OPCODE_JE); break;
 		case 0b01111100: jump(OPCODE_JL); break;
 		case 0b01111110: jump(OPCODE_JLE); break;
