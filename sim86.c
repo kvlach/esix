@@ -380,6 +380,7 @@ int main(int argc, char *argv[]) {
 		// first 7 bits
 		switch (b & 0b11111110) {
 		case 0b11000110: immediate_to_reg_mem(OPCODE_MOV, b); break;
+		case 0b10000110: reg_mem_with_reg_either(OPCODE_XCHG, b); break;
 
 		case 0b00000100: immediate_to_accumulator(OPCODE_ADD, b); break;
 		case 0b00101100: immediate_to_accumulator(OPCODE_SUB, b); break;
@@ -445,6 +446,10 @@ int main(int argc, char *argv[]) {
 		switch (b & 0b11111000) {
 		case 0b01010000: reg_print(OPCODE_PUSH, b); break;
 		case 0b01011000: reg_print(OPCODE_POP, b); break;
+		case 0b10010000:
+			reg = register_match(b & 0b111, 1);
+			printf("%s ax, %s\n", opcode_fmt(OPCODE_XCHG), register_fmt(reg));
+			break;
 		}
 
 		// first 4 bits
