@@ -401,6 +401,25 @@ int main(int argc, char *argv[]) {
 			}
 			break;
 
+		case 0b11100110:
+			// little endian
+			w = nth(b, 0);
+			if (w == 0) {
+				printf("%s %d, al\n", opcode_fmt(OPCODE_OUT), (byte)peek());
+			} else {
+				printf("%s %d, ax\n", opcode_fmt(OPCODE_OUT), (byte)peek());
+			}
+			break;
+		case 0b11101110:
+			// little endian
+			w = nth(b, 0);
+			if (w == 0) {
+				printf("%s dx, al\n", opcode_fmt(OPCODE_OUT));
+			} else {
+				printf("%s dx, ax\n", opcode_fmt(OPCODE_OUT));
+			}
+			break;
+
 		case 0b00000100: immediate_to_accumulator(OPCODE_ADD, b); break;
 		case 0b00101100: immediate_to_accumulator(OPCODE_SUB, b); break;
 		case 0b00111100: immediate_to_accumulator(OPCODE_CMP, b); break;
