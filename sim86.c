@@ -24,10 +24,19 @@ int i = 0;
 
 char peek() { return buf[++i]; }
 
-const char *opcodes_fmt[24] = {
-	"mov", "add", "cmp", "sub", "je",   "jl",    "jle",    "jb",
-	"jbe", "jp",  "jo",  "js",  "jne",  "jnl",   "jg",     "jnb",
-	"ja",  "jnp", "jno", "jns", "loop", "loopz", "loopnz", "jcxz",
+const char *opcodes_fmt[90] = {
+	"mov",    "push",     "pop",   "xchg",  "in",     "out",   "xlat",  "lea",
+	"lds",    "les",      "lahf",  "sahf",  "pushf",  "popf",  "add",   "adc",
+	"inc",    "aaa",      "daa",   "sub",   "sbb",    "dec",   "neg",   "cmp",
+	"aas",    "das",      "mul",   "imul",  "aam",    "div",   "idiv",  "aad",
+	"cbw",    "cwd",      "not",   "shl",   "shr",    "sar",   "rol",   "ror",
+	"rcl",    "rcr",      "and",   "test",  "or",     "xor",   "rep",   "movs",
+	"cmps",   "scas",     "lods",  "stds",  "call",   "jmp",   "ret",   "je",
+	"jl",     "jle",      "jb",    "jbe",   "jp",     "jo",    "js",    "jne",
+	"jnl",    "jg",       "jnb",   "ja",    "jnp",    "jno",   "jns",   "loop",
+	"loopz",  "loopnz",   "jcxz",  "int",   "into",   "iret",  "clc",   "cmc",
+	"stc",    "cld",      "std",   "cli",   "sti",    "hlt",   "wait",  "esc",
+	"lock",   "segment",
 };
 
 const char *opcode_fmt(const opcode op) {
@@ -52,6 +61,23 @@ register_ register_match(const byte b, const bool w) {
 
 const char *register_fmt(const register_ r) {
 	return registers_fmt[r];
+}
+
+const segment_register segment_registers[4] = {
+    SEGMENT_REGISTER_ES,
+    SEGMENT_REGISTER_CS,
+    SEGMENT_REGISTER_SS,
+    SEGMENT_REGISTER_DS,
+};
+
+const char *segment_registers_fmt[4] = { "es", "cs", "ss", "ds" };
+
+segment_register segment_register_match(const byte b) {
+	return segment_registers[b];
+}
+
+const char *segment_register_fmt(const segment_register sr) {
+	return segment_registers_fmt[sr];
 }
 
 const mode modes[4] = {
@@ -303,6 +329,7 @@ int main(int argc, char *argv[]) {
 
 	opcode op;
 	register_ reg;
+	segment_register sr;
 	bool w;
 	byte b1, b2;
 	while (i < fsize) {
@@ -310,6 +337,13 @@ int main(int argc, char *argv[]) {
 
 		// first 8 bits
 		switch (b & 0b11111111) {
+		case 0b11111111:
+			b = peek();
+			mode mod = mode_match(b);
+			register_memory r_m = register_memory_match(b, mod, w);
+			printf("%s word %s\n", opcode_fmt(OPCODE_PUSH), register_memory_fmt(r_m));
+			break;
+
 		case 0b01110100: jump(OPCODE_JE); break;
 		case 0b01111100: jump(OPCODE_JL); break;
 		case 0b01111110: jump(OPCODE_JLE); break;
@@ -389,6 +423,20 @@ int main(int argc, char *argv[]) {
 		case 0b00111000: reg_mem_with_reg_either(OPCODE_CMP, b); break;
 		case 0b00101000: reg_mem_with_reg_either(OPCODE_SUB, b); break;
 		case 0b00000000: reg_mem_with_reg_either(OPCODE_ADD, b); break;
+		}
+
+		switch (b & 0b11100111) {
+		case 0b00000110:
+			sr = segment_register_match((b & 0b00011000) >> 3);
+			printf("%s %s\n", opcode_fmt(OPCODE_PUSH), segment_register_fmt(sr));
+		}
+
+		// first 5 bits
+		switch (b & 0b11111000) {
+		case 0b01010000:
+			reg = register_match(b & 0b111, 1);
+			printf("%s %s\n", opcode_fmt(OPCODE_PUSH), register_fmt(reg));
+			break;
 		}
 
 		// first 4 bits
