@@ -356,6 +356,14 @@ int main(int argc, char *argv[]) {
 		case 0b11111111: reg_mem_print(OPCODE_PUSH, peek()); break;
 		case 0b10001111: reg_mem_print(OPCODE_POP, peek()); break;
 		case 0b11010111: printf("%s\n", opcode_fmt(OPCODE_XLAT)); break;
+
+		// xor to flip the pretend d bit
+		case 0b10001101: reg_mem_with_reg_either(OPCODE_LEA, b^0b10); break;
+		case 0b11000101: reg_mem_with_reg_either(OPCODE_LDS, b^0b10); break;
+
+		// xor to flip the pretend d and w bits
+		case 0b11000100: reg_mem_with_reg_either(OPCODE_LES, b^0b11); break;
+
 		case 0b01110100: jump(OPCODE_JE); break;
 		case 0b01111100: jump(OPCODE_JL); break;
 		case 0b01111110: jump(OPCODE_JLE); break;
