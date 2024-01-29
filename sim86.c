@@ -466,6 +466,7 @@ int main(int argc, char *argv[]) {
 			break;
 
 		case 0b00101100: immediate_to_accumulator(OPCODE_SUB, b); break;
+		case 0b00011100: immediate_to_accumulator(OPCODE_SBB, b); break;
 		case 0b00111100: immediate_to_accumulator(OPCODE_CMP, b); break;
 
 		case 0b10100000: // Memory to accumulator
@@ -510,6 +511,7 @@ int main(int argc, char *argv[]) {
 			case 0b00000000: immediate_to_reg_mem_sign(OPCODE_ADD, b); break;
 			case 0b00010000: immediate_to_reg_mem_sign(OPCODE_ADC, b); break;
 			case 0b00101000: immediate_to_reg_mem_sign(OPCODE_SUB, b); break;
+			case 0b00011000: immediate_to_reg_mem_sign(OPCODE_SBB, b); break;
 			case 0b00111000: immediate_to_reg_mem_sign(OPCODE_CMP, b); break;
 			}
 			break;
@@ -517,8 +519,9 @@ int main(int argc, char *argv[]) {
 		case 0b10001000: reg_mem_with_reg_either(OPCODE_MOV, b); break;
 		case 0b00000000: reg_mem_with_reg_either(OPCODE_ADD, b); break;
 		case 0b00010000: reg_mem_with_reg_either(OPCODE_ADC, b); break;
-		case 0b00111000: reg_mem_with_reg_either(OPCODE_CMP, b); break;
 		case 0b00101000: reg_mem_with_reg_either(OPCODE_SUB, b); break;
+		case 0b00011000: reg_mem_with_reg_either(OPCODE_SBB, b); break;
+		case 0b00111000: reg_mem_with_reg_either(OPCODE_CMP, b); break;
 		}
 
 		switch (b & 0b11100111) {
