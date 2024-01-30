@@ -395,6 +395,24 @@ int main(int argc, char *argv[]) {
 		case 0b00110111: printf("%s\n", opcode_fmt(OPCODE_AAA)); goto next;
 		case 0b00100111: printf("%s\n", opcode_fmt(OPCODE_DAA)); goto next;
 
+		case 0b00111111: printf("%s\n", opcode_fmt(OPCODE_AAS)); goto next;
+		case 0b00101111: printf("%s\n", opcode_fmt(OPCODE_DAS)); goto next;
+
+		case 0b11010100:
+			switch (buf[i+1] & 0b11111111) {
+			case 0b00001010: printf("%s\n", opcode_fmt(OPCODE_AAM)); goto next;
+			}
+			break;
+
+		case 0b11010101:
+			switch (buf[i+1] & 0b11111111) {
+			case 0b00001010: printf("%s\n", opcode_fmt(OPCODE_AAD)); goto next;
+			}
+			break;
+
+		case 0b10011000: printf("%s\n", opcode_fmt(OPCODE_CBW)); goto next;
+		case 0b10011001: printf("%s\n", opcode_fmt(OPCODE_CWD)); goto next;
+
 		case 0b01110100: jump(OPCODE_JE); goto next;
 		case 0b01111100: jump(OPCODE_JL); goto next;
 		case 0b01111110: jump(OPCODE_JLE); goto next;
@@ -476,6 +494,11 @@ int main(int argc, char *argv[]) {
 		case 0b11110110:
 			switch (buf[i+1] & 0b00111000) {
 			case 0b00011000: reg_mem_wide_print(OPCODE_NEG, b); goto next;
+			case 0b00100000: reg_mem_wide_print(OPCODE_MUL, b); goto next;
+			case 0b00101000: reg_mem_wide_print(OPCODE_IMUL, b); goto next;
+			case 0b00110000: reg_mem_wide_print(OPCODE_DIV, b); goto next;
+			case 0b00111000: reg_mem_wide_print(OPCODE_IDIV, b); goto next;
+			case 0b00010000: reg_mem_wide_print(OPCODE_NOT, b); goto next;
 			}
 			break;
 
