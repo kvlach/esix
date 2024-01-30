@@ -305,6 +305,19 @@ void reg_mem_print(const opcode op, const byte b) {
 	printf("%s word %s\n", opcode_fmt(op), register_memory_fmt(r_m));
 }
 
+void reg_mem_wide_print(const opcode op, byte b) {
+	// little endian
+	bool w = nth(b, 0);
+	b = peek();
+	mode mod = mode_match(b);
+	register_memory r_m = register_memory_match(b, mod, w);
+	if (w == 0) {
+		printf("%s byte %s\n", opcode_fmt(op), register_memory_fmt(r_m));
+	} else {
+		printf("%s word %s\n", opcode_fmt(op), register_memory_fmt(r_m));
+	}
+}
+
 void seg_reg_print(const opcode op, const byte b) {
 	segment_register sr = segment_register_match((b & 0b00011000) >> 3);
 	printf("%s %s\n", opcode_fmt(op), segment_register_fmt(sr));
@@ -449,18 +462,9 @@ int main(int argc, char *argv[]) {
 		case 0b00010100: immediate_to_accumulator(OPCODE_ADC, b); break;
 
 		case 0b11111110:
-			if ((buf[i+1] & 0b00111000) == 0b00000000) {
-				w = nth(b, 0);
-				b = peek();
-				mode mod = mode_match(b);
-				register_memory r_m = register_memory_match(b, mod, w);
-				if (w == 0) {
-					printf("%s byte %s\n", opcode_fmt(OPCODE_INC), register_memory_fmt(r_m));
-				} else {
-					printf("%s word %s\n", opcode_fmt(OPCODE_INC), register_memory_fmt(r_m));
-				}
-				i++;
-				continue;
+			switch (buf[i+1] & 0b00111000) {
+			case 0b00000000: reg_mem_wide_print(OPCODE_INC, b); goto next;
+			case 0b00001000: reg_mem_wide_print(OPCODE_DEC, b); goto next;
 			}
 
 			break;
@@ -538,6 +542,7 @@ int main(int argc, char *argv[]) {
 			printf("%s ax, %s\n", opcode_fmt(OPCODE_XCHG), register_fmt(reg));
 			break;
 		case 0b01000000: reg_print(OPCODE_INC, b); break;
+		case 0b01001000: reg_print(OPCODE_DEC, b); break;
 		}
 
 		// first 4 bits
@@ -559,7 +564,7 @@ int main(int argc, char *argv[]) {
 			       combine_bytes(b1, b2));
 			break;
 		}
-
+	next:
 		i++;
 	}
 
