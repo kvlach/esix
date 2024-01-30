@@ -472,6 +472,13 @@ int main(int argc, char *argv[]) {
 
 		case 0b00101100: immediate_to_accumulator(OPCODE_SUB, b); goto next;
 		case 0b00011100: immediate_to_accumulator(OPCODE_SBB, b); goto next;
+
+		case 0b11110110:
+			switch (buf[i+1] & 0b00111000) {
+			case 0b00011000: reg_mem_wide_print(OPCODE_NEG, b); goto next;
+			}
+			break;
+
 		case 0b00111100: immediate_to_accumulator(OPCODE_CMP, b); goto next;
 
 		case 0b10100000: // Memory to accumulator
