@@ -369,56 +369,58 @@ int main(int argc, char *argv[]) {
 		case 0b11111111:
 			if ((buf[i+1] & 0b00111000) == 0b00110000) {
 				reg_mem_print(OPCODE_PUSH, peek());
+				goto next;
 			}
 			break;
 		case 0b10001111:
 			if ((buf[i+1] & 0b00111000) == 0b00000000) {
 				reg_mem_print(OPCODE_POP, peek());
+				goto next;
 			}
 			break;
-		case 0b11010111: printf("%s\n", opcode_fmt(OPCODE_XLAT)); break;
+		case 0b11010111: printf("%s\n", opcode_fmt(OPCODE_XLAT)); goto next;
 
 		// xor to flip the pretend d bit
-		case 0b10001101: reg_mem_with_reg_either(OPCODE_LEA, b^0b10); break;
-		case 0b11000101: reg_mem_with_reg_either(OPCODE_LDS, b^0b10); break;
+		case 0b10001101: reg_mem_with_reg_either(OPCODE_LEA, b^0b10); goto next;
+		case 0b11000101: reg_mem_with_reg_either(OPCODE_LDS, b^0b10); goto next;
 
 		// xor to flip the pretend d and w bits
-		case 0b11000100: reg_mem_with_reg_either(OPCODE_LES, b^0b11); break;
+		case 0b11000100: reg_mem_with_reg_either(OPCODE_LES, b^0b11); goto next;
 
-		case 0b10011111: printf("%s\n", opcode_fmt(OPCODE_LAHF)); break;
-		case 0b10011110: printf("%s\n", opcode_fmt(OPCODE_SAHF)); break;
-		case 0b10011100: printf("%s\n", opcode_fmt(OPCODE_PUSHF)); break;
-		case 0b10011101: printf("%s\n", opcode_fmt(OPCODE_POPF)); break;
+		case 0b10011111: printf("%s\n", opcode_fmt(OPCODE_LAHF)); goto next;
+		case 0b10011110: printf("%s\n", opcode_fmt(OPCODE_SAHF)); goto next;
+		case 0b10011100: printf("%s\n", opcode_fmt(OPCODE_PUSHF)); goto next;
+		case 0b10011101: printf("%s\n", opcode_fmt(OPCODE_POPF)); goto next;
 
-		case 0b00110111: printf("%s\n", opcode_fmt(OPCODE_AAA)); break;
-		case 0b00100111: printf("%s\n", opcode_fmt(OPCODE_DAA)); break;
+		case 0b00110111: printf("%s\n", opcode_fmt(OPCODE_AAA)); goto next;
+		case 0b00100111: printf("%s\n", opcode_fmt(OPCODE_DAA)); goto next;
 
-		case 0b01110100: jump(OPCODE_JE); break;
-		case 0b01111100: jump(OPCODE_JL); break;
-		case 0b01111110: jump(OPCODE_JLE); break;
-		case 0b01110010: jump(OPCODE_JB); break;
-		case 0b01110110: jump(OPCODE_JBE); break;
-		case 0b01111010: jump(OPCODE_JP); break;
-		case 0b01110000: jump(OPCODE_JO); break;
-		case 0b01111000: jump(OPCODE_JS); break;
-		case 0b01110101: jump(OPCODE_JNE); break;
-		case 0b01111101: jump(OPCODE_JNL); break;
-		case 0b01111111: jump(OPCODE_JG); break;
-		case 0b01110011: jump(OPCODE_JNB); break;
-		case 0b01110111: jump(OPCODE_JA); break;
-		case 0b01111011: jump(OPCODE_JNP); break;
-		case 0b01110001: jump(OPCODE_JNO); break;
-		case 0b01111001: jump(OPCODE_JNS); break;
-		case 0b11100010: jump(OPCODE_LOOP); break;
-		case 0b11100001: jump(OPCODE_LOOPZ); break;
-		case 0b11100000: jump(OPCODE_LOOPNZ); break;
-		case 0b11100011: jump(OPCODE_JCXZ); break;
+		case 0b01110100: jump(OPCODE_JE); goto next;
+		case 0b01111100: jump(OPCODE_JL); goto next;
+		case 0b01111110: jump(OPCODE_JLE); goto next;
+		case 0b01110010: jump(OPCODE_JB); goto next;
+		case 0b01110110: jump(OPCODE_JBE); goto next;
+		case 0b01111010: jump(OPCODE_JP); goto next;
+		case 0b01110000: jump(OPCODE_JO); goto next;
+		case 0b01111000: jump(OPCODE_JS); goto next;
+		case 0b01110101: jump(OPCODE_JNE); goto next;
+		case 0b01111101: jump(OPCODE_JNL); goto next;
+		case 0b01111111: jump(OPCODE_JG); goto next;
+		case 0b01110011: jump(OPCODE_JNB); goto next;
+		case 0b01110111: jump(OPCODE_JA); goto next;
+		case 0b01111011: jump(OPCODE_JNP); goto next;
+		case 0b01110001: jump(OPCODE_JNO); goto next;
+		case 0b01111001: jump(OPCODE_JNS); goto next;
+		case 0b11100010: jump(OPCODE_LOOP); goto next;
+		case 0b11100001: jump(OPCODE_LOOPZ); goto next;
+		case 0b11100000: jump(OPCODE_LOOPNZ); goto next;
+		case 0b11100011: jump(OPCODE_JCXZ); goto next;
 		}
 
 		// first 7 bits
 		switch (b & 0b11111110) {
-		case 0b11000110: immediate_to_reg_mem(OPCODE_MOV, b); break;
-		case 0b10000110: reg_mem_with_reg_either(OPCODE_XCHG, b); break;
+		case 0b11000110: immediate_to_reg_mem(OPCODE_MOV, b); goto next;
+		case 0b10000110: reg_mem_with_reg_either(OPCODE_XCHG, b); goto next;
 
 		case 0b11100100:
 			// little endian
@@ -428,7 +430,7 @@ int main(int argc, char *argv[]) {
 			} else {
 				printf("%s ax, %d\n", opcode_fmt(OPCODE_IN), (byte)peek());
 			}
-			break;
+			goto next;
 		case 0b11101100:
 			// little endian
 			w = nth(b, 0);
@@ -437,7 +439,7 @@ int main(int argc, char *argv[]) {
 			} else {
 				printf("%s ax, dx\n", opcode_fmt(OPCODE_IN));
 			}
-			break;
+			goto next;
 
 		case 0b11100110:
 			// little endian
@@ -447,7 +449,7 @@ int main(int argc, char *argv[]) {
 			} else {
 				printf("%s %d, ax\n", opcode_fmt(OPCODE_OUT), (byte)peek());
 			}
-			break;
+			goto next;
 		case 0b11101110:
 			// little endian
 			w = nth(b, 0);
@@ -456,22 +458,21 @@ int main(int argc, char *argv[]) {
 			} else {
 				printf("%s dx, ax\n", opcode_fmt(OPCODE_OUT));
 			}
-			break;
+			goto next;
 
-		case 0b00000100: immediate_to_accumulator(OPCODE_ADD, b); break;
-		case 0b00010100: immediate_to_accumulator(OPCODE_ADC, b); break;
+		case 0b00000100: immediate_to_accumulator(OPCODE_ADD, b); goto next;
+		case 0b00010100: immediate_to_accumulator(OPCODE_ADC, b); goto next;
 
 		case 0b11111110:
 			switch (buf[i+1] & 0b00111000) {
 			case 0b00000000: reg_mem_wide_print(OPCODE_INC, b); goto next;
 			case 0b00001000: reg_mem_wide_print(OPCODE_DEC, b); goto next;
 			}
-
 			break;
 
-		case 0b00101100: immediate_to_accumulator(OPCODE_SUB, b); break;
-		case 0b00011100: immediate_to_accumulator(OPCODE_SBB, b); break;
-		case 0b00111100: immediate_to_accumulator(OPCODE_CMP, b); break;
+		case 0b00101100: immediate_to_accumulator(OPCODE_SUB, b); goto next;
+		case 0b00011100: immediate_to_accumulator(OPCODE_SBB, b); goto next;
+		case 0b00111100: immediate_to_accumulator(OPCODE_CMP, b); goto next;
 
 		case 0b10100000: // Memory to accumulator
 			op = OPCODE_MOV;
@@ -488,7 +489,7 @@ int main(int argc, char *argv[]) {
 			printf("%s ax, [%d]\n", opcode_fmt(op),
 			       combine_bytes(b1, b2));
 
-			break;
+			goto next;
 
 		case 0b10100010: // Accumulator to memory
 			op = OPCODE_MOV;
@@ -505,44 +506,44 @@ int main(int argc, char *argv[]) {
 			printf("%s [%d], ax\n", opcode_fmt(op),
 			       combine_bytes(b1, b2));
 
-			break;
+			goto next;
 		}
 
 		// first 6 bits
 		switch (b & 0b11111100) {
 		case 0b10000000:
 			switch (buf[i+1] & 0b00111000) {
-			case 0b00000000: immediate_to_reg_mem_sign(OPCODE_ADD, b); break;
-			case 0b00010000: immediate_to_reg_mem_sign(OPCODE_ADC, b); break;
-			case 0b00101000: immediate_to_reg_mem_sign(OPCODE_SUB, b); break;
-			case 0b00011000: immediate_to_reg_mem_sign(OPCODE_SBB, b); break;
-			case 0b00111000: immediate_to_reg_mem_sign(OPCODE_CMP, b); break;
+			case 0b00000000: immediate_to_reg_mem_sign(OPCODE_ADD, b); goto next;
+			case 0b00010000: immediate_to_reg_mem_sign(OPCODE_ADC, b); goto next;
+			case 0b00101000: immediate_to_reg_mem_sign(OPCODE_SUB, b); goto next;
+			case 0b00011000: immediate_to_reg_mem_sign(OPCODE_SBB, b); goto next;
+			case 0b00111000: immediate_to_reg_mem_sign(OPCODE_CMP, b); goto next;
 			}
 			break;
 
-		case 0b10001000: reg_mem_with_reg_either(OPCODE_MOV, b); break;
-		case 0b00000000: reg_mem_with_reg_either(OPCODE_ADD, b); break;
-		case 0b00010000: reg_mem_with_reg_either(OPCODE_ADC, b); break;
-		case 0b00101000: reg_mem_with_reg_either(OPCODE_SUB, b); break;
-		case 0b00011000: reg_mem_with_reg_either(OPCODE_SBB, b); break;
-		case 0b00111000: reg_mem_with_reg_either(OPCODE_CMP, b); break;
+		case 0b10001000: reg_mem_with_reg_either(OPCODE_MOV, b); goto next;
+		case 0b00000000: reg_mem_with_reg_either(OPCODE_ADD, b); goto next;
+		case 0b00010000: reg_mem_with_reg_either(OPCODE_ADC, b); goto next;
+		case 0b00101000: reg_mem_with_reg_either(OPCODE_SUB, b); goto next;
+		case 0b00011000: reg_mem_with_reg_either(OPCODE_SBB, b); goto next;
+		case 0b00111000: reg_mem_with_reg_either(OPCODE_CMP, b); goto next;
 		}
 
 		switch (b & 0b11100111) {
-		case 0b00000110: seg_reg_print(OPCODE_PUSH, b); break;
-		case 0b00000111: seg_reg_print(OPCODE_POP, b); break;
+		case 0b00000110: seg_reg_print(OPCODE_PUSH, b); goto next;
+		case 0b00000111: seg_reg_print(OPCODE_POP, b); goto next;
 		}
 
 		// first 5 bits
 		switch (b & 0b11111000) {
-		case 0b01010000: reg_print(OPCODE_PUSH, b); break;
-		case 0b01011000: reg_print(OPCODE_POP, b); break;
+		case 0b01010000: reg_print(OPCODE_PUSH, b); goto next;
+		case 0b01011000: reg_print(OPCODE_POP, b); goto next;
 		case 0b10010000:
 			reg = register_match(b, 1);
 			printf("%s ax, %s\n", opcode_fmt(OPCODE_XCHG), register_fmt(reg));
-			break;
-		case 0b01000000: reg_print(OPCODE_INC, b); break;
-		case 0b01001000: reg_print(OPCODE_DEC, b); break;
+			goto next;
+		case 0b01000000: reg_print(OPCODE_INC, b); goto next;
+		case 0b01001000: reg_print(OPCODE_DEC, b); goto next;
 		}
 
 		// first 4 bits
@@ -562,7 +563,7 @@ int main(int argc, char *argv[]) {
 
 			printf("%s %s, %d\n", opcode_fmt(op), register_fmt(reg),
 			       combine_bytes(b1, b2));
-			break;
+			goto next;
 		}
 	next:
 		i++;
