@@ -419,13 +419,13 @@ int main(int argc, char *argv[]) {
 
 		case 0b11010100:
 			switch (buf[i+1] & 0b11111111) {
-			case 0b00001010: printf("%s\n", opcode_fmt(OPCODE_AAM)); goto next;
+			case 0b00001010: printf("%s\n", opcode_fmt(OPCODE_AAM)); i++; goto next;
 			}
 			break;
 
 		case 0b11010101:
 			switch (buf[i+1] & 0b11111111) {
-			case 0b00001010: printf("%s\n", opcode_fmt(OPCODE_AAD)); goto next;
+			case 0b00001010: printf("%s\n", opcode_fmt(OPCODE_AAD)); i++; goto next;
 			}
 			break;
 
