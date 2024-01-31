@@ -518,6 +518,7 @@ int main(int argc, char *argv[]) {
 			case 0b00110000: reg_mem_wide_print(OPCODE_DIV, b); goto next;
 			case 0b00111000: reg_mem_wide_print(OPCODE_IDIV, b); goto next;
 			case 0b00010000: reg_mem_wide_print(OPCODE_NOT, b); goto next;
+			case 0b00000000: immediate_to_reg_mem(OPCODE_TEST, b); goto next;
 			}
 			break;
 
@@ -556,6 +557,19 @@ int main(int argc, char *argv[]) {
 			       combine_bytes(b1, b2));
 
 			goto next;
+
+		case 0b10000000:
+			switch (buf[i+1] & 0b00111000) {
+			case 0b00100000: immediate_to_reg_mem(OPCODE_AND, b); goto next;
+			case 0b00001000: immediate_to_reg_mem(OPCODE_OR, b); goto next;
+			case 0b00110000: immediate_to_reg_mem(OPCODE_XOR, b); goto next;
+			}
+			break;
+
+		case 0b00100100: immediate_to_accumulator(OPCODE_AND, b); goto next;
+		case 0b10101000: immediate_to_accumulator(OPCODE_TEST, b); goto next;
+		case 0b00001100: immediate_to_accumulator(OPCODE_OR, b); goto next;
+		case 0b00110100: immediate_to_accumulator(OPCODE_XOR, b); goto next;
 		}
 
 		// first 6 bits
@@ -588,6 +602,11 @@ int main(int argc, char *argv[]) {
 			case 0b00011000: v_w_reg_mem(OPCODE_RCR, b); goto next;
 			}
 			break;
+
+		case 0b00100000: reg_mem_with_reg_either(OPCODE_AND, b); goto next;
+		case 0b10000100: reg_mem_with_reg_either(OPCODE_TEST, b); goto next;
+		case 0b00001000: reg_mem_with_reg_either(OPCODE_OR, b); goto next;
+		case 0b00110000: reg_mem_with_reg_either(OPCODE_XOR, b); goto next;
 		}
 
 		switch (b & 0b11100111) {
