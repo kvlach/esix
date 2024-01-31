@@ -31,7 +31,7 @@ const char *opcodes_fmt[90] = {
 	"aas",    "das",      "mul",   "imul",  "aam",    "div",   "idiv",  "aad",
 	"cbw",    "cwd",      "not",   "shl",   "shr",    "sar",   "rol",   "ror",
 	"rcl",    "rcr",      "and",   "test",  "or",     "xor",   "rep",   "movs",
-	"cmps",   "scas",     "lods",  "stds",  "call",   "jmp",   "ret",   "je",
+	"cmps",   "scas",     "lods",  "stos",  "call",   "jmp",   "ret",   "je",
 	"jl",     "jle",      "jb",    "jbe",   "jp",     "jo",    "js",    "jne",
 	"jnl",    "jg",       "jnb",   "ja",    "jnp",    "jno",   "jns",   "loop",
 	"loopz",  "loopnz",   "jcxz",  "int",   "into",   "iret",  "clc",   "cmc",
@@ -347,6 +347,15 @@ void v_w_reg_mem(const opcode op, byte b) {
 	}
 }
 
+void str(const opcode op, const byte b) {
+	bool w = nth(b, 0);
+	if (w == 0) {
+		printf("%sb\n", opcode_fmt(op));
+	} else {
+		printf("%sw\n", opcode_fmt(op));
+	}
+}
+
 int main(int argc, char *argv[]) {
 	if (argc < 2) {
 		printf("Expected filename\n");
@@ -570,6 +579,13 @@ int main(int argc, char *argv[]) {
 		case 0b10101000: immediate_to_accumulator(OPCODE_TEST, b); goto next;
 		case 0b00001100: immediate_to_accumulator(OPCODE_OR, b); goto next;
 		case 0b00110100: immediate_to_accumulator(OPCODE_XOR, b); goto next;
+
+		case 0b11110010: printf("%s ", opcode_fmt(OPCODE_REP)); goto next;
+		case 0b10100100: str(OPCODE_MOVS, b); goto next;
+		case 0b10100110: str(OPCODE_CMPS, b); goto next;
+		case 0b10101110: str(OPCODE_SCAS, b); goto next;
+		case 0b10101100: str(OPCODE_LODS, b); goto next;
+		case 0b10101010: str(OPCODE_STOS, b); goto next;
 		}
 
 		// first 6 bits
