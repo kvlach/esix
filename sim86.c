@@ -328,6 +328,25 @@ void reg_print(const opcode op, const byte b) {
 	printf("%s %s\n", opcode_fmt(op), register_fmt(reg));
 }
 
+void v_w_reg_mem(const opcode op, byte b) {
+	bool v = nth(b, 1);
+	bool w = nth(b, 0);
+
+	b = peek();
+
+	mode mod = mode_match(b);
+	register_memory r_m = register_memory_match(b, mod, w);
+	if (w == 0 && v == 0) {
+		printf("%s byte %s, 1\n", opcode_fmt(op), register_memory_fmt(r_m));
+	} else if (w == 0 && v == 1) {
+		printf("%s byte %s, cl\n", opcode_fmt(op), register_memory_fmt(r_m));
+	} else if (w == 1 && v == 0) {
+		printf("%s word %s, 1\n", opcode_fmt(op), register_memory_fmt(r_m));
+	} else {
+		printf("%s word %s, cl\n", opcode_fmt(op), register_memory_fmt(r_m));
+	}
+}
+
 int main(int argc, char *argv[]) {
 	if (argc < 2) {
 		printf("Expected filename\n");
@@ -557,6 +576,18 @@ int main(int argc, char *argv[]) {
 		case 0b00101000: reg_mem_with_reg_either(OPCODE_SUB, b); goto next;
 		case 0b00011000: reg_mem_with_reg_either(OPCODE_SBB, b); goto next;
 		case 0b00111000: reg_mem_with_reg_either(OPCODE_CMP, b); goto next;
+
+		case 0b11010000:
+			switch (buf[i+1] & 0b00111000) {
+			case 0b00100000: v_w_reg_mem(OPCODE_SHL, b); goto next;
+			case 0b00101000: v_w_reg_mem(OPCODE_SHR, b); goto next;
+			case 0b00111000: v_w_reg_mem(OPCODE_SAR, b); goto next;
+			case 0b00000000: v_w_reg_mem(OPCODE_ROL, b); goto next;
+			case 0b00001000: v_w_reg_mem(OPCODE_ROR, b); goto next;
+			case 0b00010000: v_w_reg_mem(OPCODE_RCL, b); goto next;
+			case 0b00011000: v_w_reg_mem(OPCODE_RCR, b); goto next;
+			}
+			break;
 		}
 
 		switch (b & 0b11100111) {
