@@ -395,9 +395,10 @@ int main(int argc, char *argv[]) {
 		// first 8 bits
 		switch (b & 0b11111111) {
 		case 0b11111111:
-			if ((buf[i+1] & 0b00111000) == 0b00110000) {
-				reg_mem_print(OPCODE_PUSH, peek());
-				goto next;
+			switch (buf[i+1] & 0b00111000) {
+			case 0b00110000: reg_mem_print(OPCODE_PUSH, peek()); goto next;
+			case 0b00010000: reg_mem_print(OPCODE_CALL, peek()); goto next;
+			case 0b00100000: reg_mem_print(OPCODE_JMP, peek()); goto next;
 			}
 			break;
 		case 0b10001111:
@@ -440,6 +441,13 @@ int main(int argc, char *argv[]) {
 
 		case 0b10011000: printf("%s\n", opcode_fmt(OPCODE_CBW)); goto next;
 		case 0b10011001: printf("%s\n", opcode_fmt(OPCODE_CWD)); goto next;
+
+		case 0b11000011: printf("%s\n", opcode_fmt(OPCODE_RET)); goto next;
+		case 0b11000010:
+			b1 = peek();
+			b2 = peek();
+			printf("%s %d\n", opcode_fmt(OPCODE_RET), combine_bytes(b1, b2));
+			goto next;
 
 		case 0b01110100: jump(OPCODE_JE); goto next;
 		case 0b01111100: jump(OPCODE_JL); goto next;
