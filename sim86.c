@@ -385,6 +385,7 @@ int main(int argc, char *argv[]) {
 	printf("bits 16\n\n");
 
 	opcode op;
+	mode mod;
 	register_ reg;
 	segment_register sr;
 	bool w;
@@ -469,12 +470,32 @@ int main(int argc, char *argv[]) {
 		case 0b11100001: jump(OPCODE_LOOPZ); goto next;
 		case 0b11100000: jump(OPCODE_LOOPNZ); goto next;
 		case 0b11100011: jump(OPCODE_JCXZ); goto next;
+
+		case 0b11001101: printf("%s %d\n", opcode_fmt(OPCODE_INT), peek()); goto next;
+		case 0b11001100: printf("%s3\n", opcode_fmt(OPCODE_INT)); goto next;
+		case 0b11001110: printf("%s\n", opcode_fmt(OPCODE_INTO)); goto next;
+		case 0b11001111: printf("%s\n", opcode_fmt(OPCODE_IRET)); goto next;
+		case 0b11111000: printf("%s\n", opcode_fmt(OPCODE_CLC)); goto next;
+		case 0b11110101: printf("%s\n", opcode_fmt(OPCODE_CMC)); goto next;
+		case 0b11111001: printf("%s\n", opcode_fmt(OPCODE_STC)); goto next;
+		case 0b11111100: printf("%s\n", opcode_fmt(OPCODE_CLD)); goto next;
+		case 0b11111101: printf("%s\n", opcode_fmt(OPCODE_STD)); goto next;
+		case 0b11111010: printf("%s\n", opcode_fmt(OPCODE_CLI)); goto next;
+		case 0b11111011: printf("%s\n", opcode_fmt(OPCODE_STI)); goto next;
+		case 0b11110100: printf("%s\n", opcode_fmt(OPCODE_HLT)); goto next;
+		case 0b10011011: printf("%s\n", opcode_fmt(OPCODE_WAIT)); goto next;
+		case 0b11110000: printf("%s ", opcode_fmt(OPCODE_LOCK)); goto next;
 		}
 
 		// first 7 bits
 		switch (b & 0b11111110) {
 		case 0b11000110: immediate_to_reg_mem(OPCODE_MOV, b); goto next;
-		case 0b10000110: reg_mem_with_reg_either(OPCODE_XCHG, b); goto next;
+		case 0b10000110:
+			// nasm is picky about the order of operands, so we
+			// always flip the pretend d-bit except when MODE_REGISTER
+			mod = mode_match(buf[i+1]);
+			reg_mem_with_reg_either(OPCODE_XCHG, b^((mod != MODE_REGISTER) << 1));
+			goto next;
 
 		case 0b11100100:
 			// little endian
