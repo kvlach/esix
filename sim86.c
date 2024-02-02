@@ -47,37 +47,34 @@ const register_ registers[16] = {
     REGISTER_AL, REGISTER_CL, REGISTER_DL, REGISTER_BL,
     REGISTER_AH, REGISTER_CH, REGISTER_DH, REGISTER_BH,
     REGISTER_AX, REGISTER_CX, REGISTER_DX, REGISTER_BX,
-    REGISTER_SP, REGISTER_BP, REGISTER_SI, REGISTER_DI};
+    REGISTER_SP, REGISTER_BP, REGISTER_SI, REGISTER_DI,
+};
 
-const char *registers_fmt[16] = {
-    "al", "cl", "dl", "bl",
-    "ah", "ch", "dh", "bh",
-    "ax", "cx", "dx", "bx",
-    "sp", "bp", "si", "di"};
-
-register_ register_match(const byte b, const bool w) {
-	return registers[(w << 3) | (b & 0b111)];
-}
-
-const char *register_fmt(const register_ r) {
-	return registers_fmt[r];
-}
-
-const segment_register segment_registers[4] = {
+const register_ segment_registers[4] = {
     SEGMENT_REGISTER_ES,
     SEGMENT_REGISTER_CS,
     SEGMENT_REGISTER_SS,
     SEGMENT_REGISTER_DS,
 };
 
-const char *segment_registers_fmt[4] = { "es", "cs", "ss", "ds" };
+const char *registers_fmt[20] = {
+    "al", "cl", "dl", "bl",
+    "ah", "ch", "dh", "bh",
+    "ax", "cx", "dx", "bx",
+    "sp", "bp", "si", "di",
+    "es", "cs", "ss", "ds",
+};
 
-segment_register segment_register_match(const byte b) {
-	return segment_registers[b];
+register_ register_match(const byte b, const bool w) {
+	return registers[(w << 3) | (b & 0b111)];
 }
 
-const char *segment_register_fmt(const segment_register sr) {
-	return segment_registers_fmt[sr];
+register_ segment_register_match(const byte b) {
+	return segment_registers[b & 0b11];
+}
+
+const char *register_fmt(const register_ r) {
+	return registers_fmt[r];
 }
 
 const mode modes[4] = {
@@ -175,7 +172,6 @@ register_memory register_memory_match(byte b, const mode mod, const bool w) {
 		return (register_memory){ .mod = mod, .ea = ea };
 	}
 
-	// else MODE_REGISTER
 	return (register_memory){ .mod = mod, .reg = register_match(b, w) };
 }
 
@@ -202,14 +198,19 @@ void printBits(char ch) {
 	putchar('\n');
 }
 
-void reg_mem_with_reg_either(const opcode op, byte b) {
+void reg_mem_with_reg_either(const opcode op, byte b, const bool sr) {
 	// little endian
 	bool d = nth(b, 1);
 	bool w = nth(b, 0);
 
 	b = peek();
 	mode mod = mode_match(b);
-	register_ reg = register_match(b >> 3, w);
+	register_ reg;
+	if (sr == true) {
+		reg = segment_register_match(b >> 3);
+	} else {
+		reg = register_match(b >> 3, w);
+	}
 	register_memory r_m = register_memory_match(b, mod, w);
 
 	if (d == 0) {
@@ -319,8 +320,8 @@ void reg_mem_wide_print(const opcode op, byte b) {
 }
 
 void seg_reg_print(const opcode op, const byte b) {
-	segment_register sr = segment_register_match((b & 0b00011000) >> 3);
-	printf("%s %s\n", opcode_fmt(op), segment_register_fmt(sr));
+	register_ sr = segment_register_match(b >> 3);
+	printf("%s %s\n", opcode_fmt(op), register_fmt(sr));
 }
 
 void reg_print(const opcode op, const byte b) {
@@ -387,7 +388,7 @@ int main(int argc, char *argv[]) {
 	opcode op;
 	mode mod;
 	register_ reg;
-	segment_register sr;
+	register_ sr;
 	bool w;
 	byte b1, b2;
 	while (i < fsize) {
@@ -411,11 +412,11 @@ int main(int argc, char *argv[]) {
 		case 0b11010111: printf("%s\n", opcode_fmt(OPCODE_XLAT)); goto next;
 
 		// xor to flip the pretend d bit
-		case 0b10001101: reg_mem_with_reg_either(OPCODE_LEA, b^0b10); goto next;
-		case 0b11000101: reg_mem_with_reg_either(OPCODE_LDS, b^0b10); goto next;
+		case 0b10001101: reg_mem_with_reg_either(OPCODE_LEA, b^0b10, false); goto next;
+		case 0b11000101: reg_mem_with_reg_either(OPCODE_LDS, b^0b10, false); goto next;
 
 		// xor to flip the pretend d and w bits
-		case 0b11000100: reg_mem_with_reg_either(OPCODE_LES, b^0b11); goto next;
+		case 0b11000100: reg_mem_with_reg_either(OPCODE_LES, b^0b11, false); goto next;
 
 		case 0b10011111: printf("%s\n", opcode_fmt(OPCODE_LAHF)); goto next;
 		case 0b10011110: printf("%s\n", opcode_fmt(OPCODE_SAHF)); goto next;
@@ -494,7 +495,7 @@ int main(int argc, char *argv[]) {
 			// nasm is picky about the order of operands, so we
 			// always flip the pretend d-bit except when MODE_REGISTER
 			mod = mode_match(buf[i+1]);
-			reg_mem_with_reg_either(OPCODE_XCHG, b^((mod != MODE_REGISTER) << 1));
+			reg_mem_with_reg_either(OPCODE_XCHG, b^((mod != MODE_REGISTER) << 1), false);
 			goto next;
 
 		case 0b11100100:
@@ -629,12 +630,12 @@ int main(int argc, char *argv[]) {
 			}
 			break;
 
-		case 0b10001000: reg_mem_with_reg_either(OPCODE_MOV, b); goto next;
-		case 0b00000000: reg_mem_with_reg_either(OPCODE_ADD, b); goto next;
-		case 0b00010000: reg_mem_with_reg_either(OPCODE_ADC, b); goto next;
-		case 0b00101000: reg_mem_with_reg_either(OPCODE_SUB, b); goto next;
-		case 0b00011000: reg_mem_with_reg_either(OPCODE_SBB, b); goto next;
-		case 0b00111000: reg_mem_with_reg_either(OPCODE_CMP, b); goto next;
+		case 0b10001000: reg_mem_with_reg_either(OPCODE_MOV, b, false); goto next;
+		case 0b00000000: reg_mem_with_reg_either(OPCODE_ADD, b, false); goto next;
+		case 0b00010000: reg_mem_with_reg_either(OPCODE_ADC, b, false); goto next;
+		case 0b00101000: reg_mem_with_reg_either(OPCODE_SUB, b, false); goto next;
+		case 0b00011000: reg_mem_with_reg_either(OPCODE_SBB, b, false); goto next;
+		case 0b00111000: reg_mem_with_reg_either(OPCODE_CMP, b, false); goto next;
 
 		case 0b11010000:
 			switch (buf[i+1] & 0b00111000) {
@@ -648,15 +649,24 @@ int main(int argc, char *argv[]) {
 			}
 			break;
 
-		case 0b00100000: reg_mem_with_reg_either(OPCODE_AND, b); goto next;
-		case 0b10000100: reg_mem_with_reg_either(OPCODE_TEST, b); goto next;
-		case 0b00001000: reg_mem_with_reg_either(OPCODE_OR, b); goto next;
-		case 0b00110000: reg_mem_with_reg_either(OPCODE_XOR, b); goto next;
+		case 0b00100000: reg_mem_with_reg_either(OPCODE_AND, b, false); goto next;
+		case 0b10000100: reg_mem_with_reg_either(OPCODE_TEST, b, false); goto next;
+		case 0b00001000: reg_mem_with_reg_either(OPCODE_OR, b, false); goto next;
+		case 0b00110000: reg_mem_with_reg_either(OPCODE_XOR, b, false); goto next;
 		}
 
 		switch (b & 0b11100111) {
 		case 0b00000110: seg_reg_print(OPCODE_PUSH, b); goto next;
 		case 0b00000111: seg_reg_print(OPCODE_POP, b); goto next;
+		}
+
+		switch (b & 0b11111101) {
+		// implicit d-bit split into two instructions in the manual
+		case 0b10001100:
+			switch (buf[i+1] & 0b00100000) {
+			case 0b00000000: reg_mem_with_reg_either(OPCODE_MOV, b, true); goto next;
+			}
+			break;
 		}
 
 		// first 5 bits

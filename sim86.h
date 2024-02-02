@@ -111,14 +111,11 @@ typedef enum {
 	REGISTER_BP,
 	REGISTER_SI,
 	REGISTER_DI,
-} register_;
-
-typedef enum {
 	SEGMENT_REGISTER_ES,
 	SEGMENT_REGISTER_CS,
 	SEGMENT_REGISTER_SS,
 	SEGMENT_REGISTER_DS,
-} segment_register;
+} register_;
 
 typedef enum {
 	MODE_MEMORY_NO_DISPLACEMENT,
