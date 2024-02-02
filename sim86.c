@@ -24,19 +24,19 @@ int i = 0;
 
 char peek() { return buf[++i]; }
 
-const char *opcodes_fmt[90] = {
-	"mov",    "push",     "pop",   "xchg",  "in",     "out",   "xlat",  "lea",
-	"lds",    "les",      "lahf",  "sahf",  "pushf",  "popf",  "add",   "adc",
-	"inc",    "aaa",      "daa",   "sub",   "sbb",    "dec",   "neg",   "cmp",
-	"aas",    "das",      "mul",   "imul",  "aam",    "div",   "idiv",  "aad",
-	"cbw",    "cwd",      "not",   "shl",   "shr",    "sar",   "rol",   "ror",
-	"rcl",    "rcr",      "and",   "test",  "or",     "xor",   "rep",   "movs",
-	"cmps",   "scas",     "lods",  "stos",  "call",   "jmp",   "ret",   "je",
-	"jl",     "jle",      "jb",    "jbe",   "jp",     "jo",    "js",    "jne",
-	"jnl",    "jg",       "jnb",   "ja",    "jnp",    "jno",   "jns",   "loop",
-	"loopz",  "loopnz",   "jcxz",  "int",   "into",   "iret",  "clc",   "cmc",
-	"stc",    "cld",      "std",   "cli",   "sti",    "hlt",   "wait",  "esc",
-	"lock",   "segment",
+const char *opcodes_fmt[91] = {
+    "mov",  "push",  "pop",    "xchg", "in",    "out",  "xlat", "lea",
+    "lds",  "les",   "lahf",   "sahf", "pushf", "popf", "add",  "adc",
+    "inc",  "aaa",   "daa",    "sub",  "sbb",   "dec",  "neg",  "cmp",
+    "aas",  "das",   "mul",    "imul", "aam",   "div",  "idiv", "aad",
+    "cbw",  "cwd",   "not",    "shl",  "shr",   "sar",  "rol",  "ror",
+    "rcl",  "rcr",   "and",    "test", "or",    "xor",  "rep",  "movs",
+    "cmps", "scas",  "lods",   "stos", "call",  "jmp",  "ret",  "retf",
+    "je",   "jl",    "jle",    "jb",   "jbe",   "jp",   "jo",   "js",
+    "jne",  "jnl",   "jg",     "jnb",  "ja",    "jnp",  "jno",  "jns",
+    "loop", "loopz", "loopnz", "jcxz", "int",   "into", "iret", "clc",
+    "cmc",  "stc",   "cld",    "std",  "cli",   "sti",  "hlt",  "wait",
+    "esc",  "lock",  "segment",
 };
 
 const char *opcode_fmt(const opcode op) {
@@ -306,6 +306,13 @@ void reg_mem_print(const opcode op, const byte b) {
 	printf("%s word %s\n", opcode_fmt(op), register_memory_fmt(r_m));
 }
 
+void reg_mem_far(const opcode op) {
+	const byte b = peek();
+	mode mod = mode_match(b);
+	register_memory r_m = register_memory_match(b, mod, 1);
+	printf("%s far %s\n", opcode_fmt(op), register_memory_fmt(r_m));
+}
+
 void reg_mem_wide_print(const opcode op, byte b) {
 	// little endian
 	bool w = nth(b, 0);
@@ -357,6 +364,20 @@ void str(const opcode op, const byte b) {
 	}
 }
 
+void direct_segment(const opcode op) {
+	byte b1 = peek();
+	byte b2 = peek();
+	printf("%s %d\n", opcode_fmt(op), combine_bytes(b1, b2)+i+1);
+}
+
+void direct_intersegment(const opcode op) {
+	byte ip_lo = peek();
+	byte ip_hi = peek();
+	byte cs_lo = peek();
+	byte cs_hi = peek();
+	printf("%s %d:%d\n", opcode_fmt(op), combine_bytes(cs_lo, cs_hi), combine_bytes(ip_lo, ip_hi));
+}
+
 int main(int argc, char *argv[]) {
 	if (argc < 2) {
 		printf("Expected filename\n");
@@ -400,7 +421,9 @@ int main(int argc, char *argv[]) {
 			switch (buf[i+1] & 0b00111000) {
 			case 0b00110000: reg_mem_print(OPCODE_PUSH, peek()); goto next;
 			case 0b00010000: reg_mem_print(OPCODE_CALL, peek()); goto next;
+			case 0b00011000: reg_mem_far(OPCODE_CALL); goto next;
 			case 0b00100000: reg_mem_print(OPCODE_JMP, peek()); goto next;
+			case 0b00101000: reg_mem_far(OPCODE_JMP); goto next;
 			}
 			break;
 		case 0b10001111:
@@ -450,6 +473,17 @@ int main(int argc, char *argv[]) {
 			b2 = peek();
 			printf("%s %d\n", opcode_fmt(OPCODE_RET), combine_bytes(b1, b2));
 			goto next;
+		case 0b11001011: printf("%s\n", opcode_fmt(OPCODE_RETF)); goto next;
+		case 0b11001010:
+			b1 = peek();
+			b2 = peek();
+			printf("%s %d\n", opcode_fmt(OPCODE_RETF), combine_bytes(b1, b2));
+			goto next;
+
+		case 0b11101000: direct_segment(OPCODE_CALL); goto next;
+		case 0b10011010: direct_intersegment(OPCODE_CALL); goto next;
+		case 0b11101001: direct_segment(OPCODE_JMP); goto next;
+		case 0b11101010: direct_intersegment(OPCODE_JMP); goto next;
 
 		case 0b01110100: jump(OPCODE_JE); goto next;
 		case 0b01111100: jump(OPCODE_JL); goto next;
