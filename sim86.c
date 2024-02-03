@@ -111,8 +111,8 @@ const char *effective_addrs_fmt[8] = {
 };
 
 effective_addr effective_addr_match(byte b, const mode mod) {
-	b &= 0b00000111;
-	if (mod == MODE_MEMORY_NO_DISPLACEMENT && b == 0b00000110) {
+	b &= 0b111;
+	if (mod == MODE_MEMORY_NO_DISPLACEMENT && b == 0b110) {
 		return EFFECTIVE_ADDR_DIRECT_ADDR;
 	}
 	return effective_addrs[b];
@@ -191,13 +191,6 @@ byte get_b2(u_int8_t b1) {
 
 int nth(byte b, int n) { return (b >> n) & 1; }
 
-void printBits(char ch) {
-	for (int i = 7; i >= 0; --i) {
-		putchar((ch & (1 << i)) ? '1' : '0');
-	}
-	putchar('\n');
-}
-
 void reg_mem_with_reg_either(const opcode op, byte b, const bool sr) {
 	// little endian
 	bool d = nth(b, 1);
@@ -263,8 +256,6 @@ void immediate_to_reg_mem_sign(const opcode op, byte b) {
 	} else if (s == 1) {
 		n = sign_extend(data1);
 	} else {
-//		data2 = get_b2(data1);
-//		n = combine_bytes(data1, data2);
 		n = (int16_t)data1;
 	}
 
@@ -409,7 +400,6 @@ int main(int argc, char *argv[]) {
 	opcode op;
 	mode mod;
 	register_ reg;
-	register_ sr;
 	bool w;
 	byte b1, b2;
 	while (i < fsize) {
