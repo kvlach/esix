@@ -390,11 +390,9 @@ int main(int argc, char *argv[]) {
 
 	printf("bits 16\n\n");
 
-	opcode op;
 	mode mod;
 	register_ reg;
 	bool w;
-	byte b1, b2;
 	while (i < fsize) {
 		char b = buf[i];
 
@@ -565,15 +563,13 @@ int main(int argc, char *argv[]) {
 		case 0b00111100: immediate_to_accumulator(OPCODE_CMP, b); goto next;
 
 		case 0b10100000: // Memory to accumulator
-			op = OPCODE_MOV;
 			w = nth(b, 0);
-			printf("%s ax, [%d]\n", opcode_fmt(op), read_bytes(w));
+			printf("%s ax, [%d]\n", opcode_fmt(OPCODE_MOV), read_bytes(w));
 			goto next;
 
 		case 0b10100010: // Accumulator to memory
-			op = OPCODE_MOV;
 			w = nth(b, 0);
-			printf("%s [%d], ax\n", opcode_fmt(op), read_bytes(w));
+			printf("%s [%d], ax\n", opcode_fmt(OPCODE_MOV), read_bytes(w));
 			goto next;
 
 		case 0b10000000:
@@ -663,10 +659,9 @@ int main(int argc, char *argv[]) {
 		// first 4 bits
 		switch (b & 0b11110000) {
 		case 0b10110000: // Immediate to register
-			op = OPCODE_MOV;
 			w = nth(b, 3);
 			reg = register_match(b, w);
-			printf("%s %s, %d\n", opcode_fmt(op), register_fmt(reg), read_bytes(w));
+			printf("%s %s, %d\n", opcode_fmt(OPCODE_MOV), register_fmt(reg), read_bytes(w));
 			goto next;
 		}
 	next:
