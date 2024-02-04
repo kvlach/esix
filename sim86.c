@@ -227,7 +227,9 @@ int16_t read_bytes(const bool w) {
 
 int nth(byte b, int n) { return (b >> n) & 1; }
 
-void reg_mem_with_reg_either(const opcode op, byte b, const bool sr) {
+byte b;
+
+void reg_mem_with_reg_either(const opcode op, const bool sr) {
 	// little endian
 	bool d = nth(b, 1);
 	bool w = nth(b, 0);
@@ -248,7 +250,7 @@ void reg_mem_with_reg_either(const opcode op, byte b, const bool sr) {
 	}
 }
 
-void immediate_to_reg_mem(const opcode op, byte b) {
+void immediate_to_reg_mem(const opcode op) {
 	// little endian
 	bool w = nth(b, 0);
 
@@ -259,7 +261,7 @@ void immediate_to_reg_mem(const opcode op, byte b) {
 	printf("%s %s, %d\n", opcode_fmt(op), register_memory_fmt(r_m, FLAG_PRINT_WORD_BYTE), n);
 }
 
-void immediate_to_reg_mem_sign(const opcode op, byte b) {
+void immediate_to_reg_mem_sign(const opcode op) {
 	// little endian
 	bool w = nth(b, 0);
 	bool s = nth(b, 1);
@@ -282,7 +284,7 @@ void immediate_to_reg_mem_sign(const opcode op, byte b) {
 	printf("%s %s, %d\n", opcode_fmt(op), register_memory_fmt(r_m, FLAG_PRINT_WORD_BYTE), n);
 }
 
-void immediate_to_accumulator(opcode op, byte b) {
+void immediate_to_accumulator(opcode op) {
 	bool w = nth(b, 0);
 
 	int16_t n = read_bytes(w);
@@ -305,7 +307,7 @@ void jump(opcode op) {
 	}
 }
 
-void w_reg_mem(const opcode op, byte b) {
+void w_reg_mem(const opcode op) {
 	bool w = nth(b, 0);
 	b = peek();
 	register_memory r_m = register_memory_match(b, w);
@@ -313,22 +315,22 @@ void w_reg_mem(const opcode op, byte b) {
 }
 
 void reg_mem_far(const opcode op) {
-	const byte b = peek();
+	b = peek();
 	register_memory r_m = register_memory_match(b, 1);
 	printf("%s far %s\n", opcode_fmt(op), register_memory_fmt(r_m, 0));
 }
 
-void seg_reg_print(const opcode op, const byte b) {
+void seg_reg_print(const opcode op) {
 	register_ sr = segment_register_match(b >> 3);
 	printf("%s %s\n", opcode_fmt(op), register_fmt(sr));
 }
 
-void reg_print(const opcode op, const byte b) {
+void reg_print(const opcode op) {
 	register_ reg = register_match(b, 1);
 	printf("%s %s\n", opcode_fmt(op), register_fmt(reg));
 }
 
-void v_w_reg_mem(const opcode op, byte b) {
+void v_w_reg_mem(const opcode op) {
 	bool v = nth(b, 1);
 	bool w = nth(b, 0);
 
@@ -343,7 +345,7 @@ void v_w_reg_mem(const opcode op, byte b) {
 	}
 }
 
-void str(const opcode op, const byte b) {
+void str(const opcode op) {
 	bool w = nth(b, 0);
 	if (w == 0) {
 		printf("%sb\n", opcode_fmt(op));
@@ -394,33 +396,33 @@ int main(int argc, char *argv[]) {
 	register_ reg;
 	bool w;
 	while (i < fsize) {
-		char b = buf[i];
+		b = buf[i];
 
 		// first 8 bits
 		switch (b & 0b11111111) {
 		case 0b11111111:
 			switch (buf[i+1] & 0b00111000) {
-			case 0b00110000: w_reg_mem(OPCODE_PUSH, b); goto next;
-			case 0b00010000: w_reg_mem(OPCODE_CALL, b); goto next;
+			case 0b00110000: w_reg_mem(OPCODE_PUSH); goto next;
+			case 0b00010000: w_reg_mem(OPCODE_CALL); goto next;
 			case 0b00011000: reg_mem_far(OPCODE_CALL); goto next;
-			case 0b00100000: w_reg_mem(OPCODE_JMP, b); goto next;
+			case 0b00100000: w_reg_mem(OPCODE_JMP); goto next;
 			case 0b00101000: reg_mem_far(OPCODE_JMP); goto next;
 			}
 			break;
 		case 0b10001111:
 			if ((buf[i+1] & 0b00111000) == 0b00000000) {
-				w_reg_mem(OPCODE_POP, b);
+				w_reg_mem(OPCODE_POP);
 				goto next;
 			}
 			break;
 		case 0b11010111: printf("%s\n", opcode_fmt(OPCODE_XLAT)); goto next;
 
 		// xor to flip the pretend d bit
-		case 0b10001101: reg_mem_with_reg_either(OPCODE_LEA, b^0b10, false); goto next;
-		case 0b11000101: reg_mem_with_reg_either(OPCODE_LDS, b^0b10, false); goto next;
+		case 0b10001101: b^=0b10; reg_mem_with_reg_either(OPCODE_LEA, false); goto next;
+		case 0b11000101: b^=0b10; reg_mem_with_reg_either(OPCODE_LDS, false); goto next;
 
 		// xor to flip the pretend d and w bits
-		case 0b11000100: reg_mem_with_reg_either(OPCODE_LES, b^0b11, false); goto next;
+		case 0b11000100: b^=0b11, reg_mem_with_reg_either(OPCODE_LES, false); goto next;
 
 		case 0b10011111: printf("%s\n", opcode_fmt(OPCODE_LAHF)); goto next;
 		case 0b10011110: printf("%s\n", opcode_fmt(OPCODE_SAHF)); goto next;
@@ -497,15 +499,16 @@ int main(int argc, char *argv[]) {
 
 		// first 7 bits
 		switch (b & 0b11111110) {
-		case 0b11000110: immediate_to_reg_mem(OPCODE_MOV, b); goto next;
+		case 0b11000110: immediate_to_reg_mem(OPCODE_MOV); goto next;
 		case 0b10000110:
 			// nasm is picky about the order of operands, so we
 			// always flip the pretend d-bit except when MODE_REGISTER
 			mod = mode_match(buf[i+1]);
-			reg_mem_with_reg_either(OPCODE_XCHG, b^((mod != MODE_REGISTER) << 1), false);
+			b ^= ((mod != MODE_REGISTER) << 1);
+			reg_mem_with_reg_either(OPCODE_XCHG, false);
 			goto next;
 
-		case 0b11100100: immediate_to_accumulator(OPCODE_IN, b); goto next;
+		case 0b11100100: immediate_to_accumulator(OPCODE_IN); goto next;
 		case 0b11101100:
 			// little endian
 			w = nth(b, 0);
@@ -535,32 +538,32 @@ int main(int argc, char *argv[]) {
 			}
 			goto next;
 
-		case 0b00000100: immediate_to_accumulator(OPCODE_ADD, b); goto next;
-		case 0b00010100: immediate_to_accumulator(OPCODE_ADC, b); goto next;
+		case 0b00000100: immediate_to_accumulator(OPCODE_ADD); goto next;
+		case 0b00010100: immediate_to_accumulator(OPCODE_ADC); goto next;
 
 		case 0b11111110:
 			switch (buf[i+1] & 0b00111000) {
-			case 0b00000000: w_reg_mem(OPCODE_INC, b); goto next;
-			case 0b00001000: w_reg_mem(OPCODE_DEC, b); goto next;
+			case 0b00000000: w_reg_mem(OPCODE_INC); goto next;
+			case 0b00001000: w_reg_mem(OPCODE_DEC); goto next;
 			}
 			break;
 
-		case 0b00101100: immediate_to_accumulator(OPCODE_SUB, b); goto next;
-		case 0b00011100: immediate_to_accumulator(OPCODE_SBB, b); goto next;
+		case 0b00101100: immediate_to_accumulator(OPCODE_SUB); goto next;
+		case 0b00011100: immediate_to_accumulator(OPCODE_SBB); goto next;
 
 		case 0b11110110:
 			switch (buf[i+1] & 0b00111000) {
-			case 0b00011000: w_reg_mem(OPCODE_NEG, b); goto next;
-			case 0b00100000: w_reg_mem(OPCODE_MUL, b); goto next;
-			case 0b00101000: w_reg_mem(OPCODE_IMUL, b); goto next;
-			case 0b00110000: w_reg_mem(OPCODE_DIV, b); goto next;
-			case 0b00111000: w_reg_mem(OPCODE_IDIV, b); goto next;
-			case 0b00010000: w_reg_mem(OPCODE_NOT, b); goto next;
-			case 0b00000000: immediate_to_reg_mem(OPCODE_TEST, b); goto next;
+			case 0b00011000: w_reg_mem(OPCODE_NEG); goto next;
+			case 0b00100000: w_reg_mem(OPCODE_MUL); goto next;
+			case 0b00101000: w_reg_mem(OPCODE_IMUL); goto next;
+			case 0b00110000: w_reg_mem(OPCODE_DIV); goto next;
+			case 0b00111000: w_reg_mem(OPCODE_IDIV); goto next;
+			case 0b00010000: w_reg_mem(OPCODE_NOT); goto next;
+			case 0b00000000: immediate_to_reg_mem(OPCODE_TEST); goto next;
 			}
 			break;
 
-		case 0b00111100: immediate_to_accumulator(OPCODE_CMP, b); goto next;
+		case 0b00111100: immediate_to_accumulator(OPCODE_CMP); goto next;
 
 		case 0b10100000: // Memory to accumulator
 			w = nth(b, 0);
@@ -574,86 +577,86 @@ int main(int argc, char *argv[]) {
 
 		case 0b10000000:
 			switch (buf[i+1] & 0b00111000) {
-			case 0b00100000: immediate_to_reg_mem(OPCODE_AND, b); goto next;
-			case 0b00001000: immediate_to_reg_mem(OPCODE_OR, b); goto next;
-			case 0b00110000: immediate_to_reg_mem(OPCODE_XOR, b); goto next;
+			case 0b00100000: immediate_to_reg_mem(OPCODE_AND); goto next;
+			case 0b00001000: immediate_to_reg_mem(OPCODE_OR); goto next;
+			case 0b00110000: immediate_to_reg_mem(OPCODE_XOR); goto next;
 			}
 			break;
 
-		case 0b00100100: immediate_to_accumulator(OPCODE_AND, b); goto next;
-		case 0b10101000: immediate_to_accumulator(OPCODE_TEST, b); goto next;
-		case 0b00001100: immediate_to_accumulator(OPCODE_OR, b); goto next;
-		case 0b00110100: immediate_to_accumulator(OPCODE_XOR, b); goto next;
+		case 0b00100100: immediate_to_accumulator(OPCODE_AND); goto next;
+		case 0b10101000: immediate_to_accumulator(OPCODE_TEST); goto next;
+		case 0b00001100: immediate_to_accumulator(OPCODE_OR); goto next;
+		case 0b00110100: immediate_to_accumulator(OPCODE_XOR); goto next;
 
 		case 0b11110010: printf("%s ", opcode_fmt(OPCODE_REP)); goto next;
-		case 0b10100100: str(OPCODE_MOVS, b); goto next;
-		case 0b10100110: str(OPCODE_CMPS, b); goto next;
-		case 0b10101110: str(OPCODE_SCAS, b); goto next;
-		case 0b10101100: str(OPCODE_LODS, b); goto next;
-		case 0b10101010: str(OPCODE_STOS, b); goto next;
+		case 0b10100100: str(OPCODE_MOVS); goto next;
+		case 0b10100110: str(OPCODE_CMPS); goto next;
+		case 0b10101110: str(OPCODE_SCAS); goto next;
+		case 0b10101100: str(OPCODE_LODS); goto next;
+		case 0b10101010: str(OPCODE_STOS); goto next;
 		}
 
 		// first 6 bits
 		switch (b & 0b11111100) {
 		case 0b10000000:
 			switch (buf[i+1] & 0b00111000) {
-			case 0b00000000: immediate_to_reg_mem_sign(OPCODE_ADD, b); goto next;
-			case 0b00010000: immediate_to_reg_mem_sign(OPCODE_ADC, b); goto next;
-			case 0b00101000: immediate_to_reg_mem_sign(OPCODE_SUB, b); goto next;
-			case 0b00011000: immediate_to_reg_mem_sign(OPCODE_SBB, b); goto next;
-			case 0b00111000: immediate_to_reg_mem_sign(OPCODE_CMP, b); goto next;
+			case 0b00000000: immediate_to_reg_mem_sign(OPCODE_ADD); goto next;
+			case 0b00010000: immediate_to_reg_mem_sign(OPCODE_ADC); goto next;
+			case 0b00101000: immediate_to_reg_mem_sign(OPCODE_SUB); goto next;
+			case 0b00011000: immediate_to_reg_mem_sign(OPCODE_SBB); goto next;
+			case 0b00111000: immediate_to_reg_mem_sign(OPCODE_CMP); goto next;
 			}
 			break;
 
-		case 0b10001000: reg_mem_with_reg_either(OPCODE_MOV, b, false); goto next;
-		case 0b00000000: reg_mem_with_reg_either(OPCODE_ADD, b, false); goto next;
-		case 0b00010000: reg_mem_with_reg_either(OPCODE_ADC, b, false); goto next;
-		case 0b00101000: reg_mem_with_reg_either(OPCODE_SUB, b, false); goto next;
-		case 0b00011000: reg_mem_with_reg_either(OPCODE_SBB, b, false); goto next;
-		case 0b00111000: reg_mem_with_reg_either(OPCODE_CMP, b, false); goto next;
+		case 0b10001000: reg_mem_with_reg_either(OPCODE_MOV, false); goto next;
+		case 0b00000000: reg_mem_with_reg_either(OPCODE_ADD, false); goto next;
+		case 0b00010000: reg_mem_with_reg_either(OPCODE_ADC, false); goto next;
+		case 0b00101000: reg_mem_with_reg_either(OPCODE_SUB, false); goto next;
+		case 0b00011000: reg_mem_with_reg_either(OPCODE_SBB, false); goto next;
+		case 0b00111000: reg_mem_with_reg_either(OPCODE_CMP, false); goto next;
 
 		case 0b11010000:
 			switch (buf[i+1] & 0b00111000) {
-			case 0b00100000: v_w_reg_mem(OPCODE_SHL, b); goto next;
-			case 0b00101000: v_w_reg_mem(OPCODE_SHR, b); goto next;
-			case 0b00111000: v_w_reg_mem(OPCODE_SAR, b); goto next;
-			case 0b00000000: v_w_reg_mem(OPCODE_ROL, b); goto next;
-			case 0b00001000: v_w_reg_mem(OPCODE_ROR, b); goto next;
-			case 0b00010000: v_w_reg_mem(OPCODE_RCL, b); goto next;
-			case 0b00011000: v_w_reg_mem(OPCODE_RCR, b); goto next;
+			case 0b00100000: v_w_reg_mem(OPCODE_SHL); goto next;
+			case 0b00101000: v_w_reg_mem(OPCODE_SHR); goto next;
+			case 0b00111000: v_w_reg_mem(OPCODE_SAR); goto next;
+			case 0b00000000: v_w_reg_mem(OPCODE_ROL); goto next;
+			case 0b00001000: v_w_reg_mem(OPCODE_ROR); goto next;
+			case 0b00010000: v_w_reg_mem(OPCODE_RCL); goto next;
+			case 0b00011000: v_w_reg_mem(OPCODE_RCR); goto next;
 			}
 			break;
 
-		case 0b00100000: reg_mem_with_reg_either(OPCODE_AND, b, false); goto next;
-		case 0b10000100: reg_mem_with_reg_either(OPCODE_TEST, b, false); goto next;
-		case 0b00001000: reg_mem_with_reg_either(OPCODE_OR, b, false); goto next;
-		case 0b00110000: reg_mem_with_reg_either(OPCODE_XOR, b, false); goto next;
+		case 0b00100000: reg_mem_with_reg_either(OPCODE_AND, false); goto next;
+		case 0b10000100: reg_mem_with_reg_either(OPCODE_TEST, false); goto next;
+		case 0b00001000: reg_mem_with_reg_either(OPCODE_OR, false); goto next;
+		case 0b00110000: reg_mem_with_reg_either(OPCODE_XOR, false); goto next;
 		}
 
 		switch (b & 0b11100111) {
-		case 0b00000110: seg_reg_print(OPCODE_PUSH, b); goto next;
-		case 0b00000111: seg_reg_print(OPCODE_POP, b); goto next;
+		case 0b00000110: seg_reg_print(OPCODE_PUSH); goto next;
+		case 0b00000111: seg_reg_print(OPCODE_POP); goto next;
 		}
 
 		switch (b & 0b11111101) {
 		// implicit d-bit split into two instructions in the manual
 		case 0b10001100:
 			switch (buf[i+1] & 0b00100000) {
-			case 0b00000000: reg_mem_with_reg_either(OPCODE_MOV, b, true); goto next;
+			case 0b00000000: reg_mem_with_reg_either(OPCODE_MOV, true); goto next;
 			}
 			break;
 		}
 
 		// first 5 bits
 		switch (b & 0b11111000) {
-		case 0b01010000: reg_print(OPCODE_PUSH, b); goto next;
-		case 0b01011000: reg_print(OPCODE_POP, b); goto next;
+		case 0b01010000: reg_print(OPCODE_PUSH); goto next;
+		case 0b01011000: reg_print(OPCODE_POP); goto next;
 		case 0b10010000:
 			reg = register_match(b, 1);
 			printf("%s ax, %s\n", opcode_fmt(OPCODE_XCHG), register_fmt(reg));
 			goto next;
-		case 0b01000000: reg_print(OPCODE_INC, b); goto next;
-		case 0b01001000: reg_print(OPCODE_DEC, b); goto next;
+		case 0b01000000: reg_print(OPCODE_INC); goto next;
+		case 0b01001000: reg_print(OPCODE_DEC); goto next;
 		}
 
 		// first 4 bits
