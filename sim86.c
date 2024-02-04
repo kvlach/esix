@@ -168,7 +168,9 @@ typedef struct {
 	int flags;
 } register_memory;
 
-register_memory register_memory_match(byte b, const mode mod, const bool w) {
+register_memory register_memory_match(byte b, const bool w) {
+	mode mod = mode_match(b);
+
 	effective_addr ea = effective_addr_match(b, mod);
 
 	if (mod == MODE_MEMORY_16BIT_DISPLACEMENT || ea == EFFECTIVE_ADDR_DIRECT_ADDR) {
@@ -220,14 +222,13 @@ void reg_mem_with_reg_either(const opcode op, byte b, const bool sr) {
 	bool w = nth(b, 0);
 
 	b = peek();
-	mode mod = mode_match(b);
 	register_ reg;
 	if (sr == true) {
 		reg = segment_register_match(b >> 3);
 	} else {
 		reg = register_match(b >> 3, w);
 	}
-	register_memory r_m = register_memory_match(b, mod, w);
+	register_memory r_m = register_memory_match(b, w);
 
 	if (d == 0) {
 		printf("%s %s, %s\n", opcode_fmt(op), register_memory_fmt(r_m, 0), register_fmt(reg));
@@ -241,8 +242,6 @@ void immediate_to_reg_mem(const opcode op, byte b) {
 	bool w = nth(b, 0);
 
 	b = peek();
-	mode mod = mode_match(b);
-	register_memory r_m = register_memory_match(b, mod, w);
 
 	byte data1 = peek();
 	byte data2;
@@ -253,6 +252,7 @@ void immediate_to_reg_mem(const opcode op, byte b) {
 	}
 
 	int16_t n = combine_bytes(data1, data2);
+	register_memory r_m = register_memory_match(b, w);
 
 	printf("%s %s, %d\n", opcode_fmt(op), register_memory_fmt(r_m, FLAG_PRINT_WORD_BYTE), n);
 }
@@ -263,8 +263,7 @@ void immediate_to_reg_mem_sign(const opcode op, byte b) {
 	bool s = nth(b, 1);
 
 	b = peek();
-	mode mod = mode_match(b);
-	register_memory r_m = register_memory_match(b, mod, w);
+	register_memory r_m = register_memory_match(b, w);
 
 	byte data1 = peek();
 	byte data2;
@@ -308,8 +307,8 @@ void jump(opcode op) {
 
 void reg_mem_print(const opcode op, const byte b) {
 	mode mod = mode_match(b);
-	register_memory r_m = register_memory_match(b, mod, 1);
 	printf("%s word %s\n", opcode_fmt(op), register_memory_fmt(r_m, FLAG_PRINT_WORD_BYTE));
+	register_memory r_m = register_memory_match(b, w);
 }
 
 void reg_mem_far(const opcode op) {
@@ -323,8 +322,7 @@ void reg_mem_wide_print(const opcode op, byte b) {
 	// little endian
 	bool w = nth(b, 0);
 	b = peek();
-	mode mod = mode_match(b);
-	register_memory r_m = register_memory_match(b, mod, w);
+	register_memory r_m = register_memory_match(b, 1);
 	printf("%s far %s\n", opcode_fmt(op), register_memory_fmt(r_m, 0));
 }
 
@@ -344,8 +342,8 @@ void v_w_reg_mem(const opcode op, byte b) {
 
 	b = peek();
 
-	mode mod = mode_match(b);
-	register_memory r_m = register_memory_match(b, mod, w);
+	register_memory r_m = register_memory_match(b, w);
+
 	if (v) {
 		printf("%s %s, cl\n", opcode_fmt(op), register_memory_fmt(r_m, FLAG_PRINT_WORD_BYTE));
 	} else {
