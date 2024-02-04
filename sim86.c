@@ -207,11 +207,22 @@ const char *register_memory_fmt(register_memory r_m, int flags) {
 	return effective_addr_fmt(r_m.ea, r_m.mod, r_m.disp, r_m.flags | flags);
 }
 
-byte get_b2(u_int8_t b1) {
-	if (b1 > 0) {
+byte get_high(u_int8_t low) {
+	if (low > 0) {
 		return 0;
 	}
 	return 0b11111111;
+}
+
+int16_t read_bytes(const bool w) {
+	byte low = peek();
+	byte high;
+	if (w == 0) {
+		high = get_high(low);
+	} else {
+		high = peek();
+	}
+	return combine_bytes(low, high);
 }
 
 int nth(byte b, int n) { return (b >> n) & 1; }
@@ -242,17 +253,8 @@ void immediate_to_reg_mem(const opcode op, byte b) {
 	bool w = nth(b, 0);
 
 	b = peek();
-
-	byte data1 = peek();
-	byte data2;
-	if (w == 0) {
-		data2 = get_b2(data1);
-	} else {
-		data2 = peek();
-	}
-
-	int16_t n = combine_bytes(data1, data2);
 	register_memory r_m = register_memory_match(b, w);
+	int16_t n = read_bytes(w);
 
 	printf("%s %s, %d\n", opcode_fmt(op), register_memory_fmt(r_m, FLAG_PRINT_WORD_BYTE), n);
 }
@@ -283,14 +285,12 @@ void immediate_to_reg_mem_sign(const opcode op, byte b) {
 void immediate_to_accumulator(opcode op, byte b) {
 	bool w = nth(b, 0);
 
-	byte b1 = peek();
-	byte b2;
+	int16_t n = read_bytes(w);
+
 	if (w == 0) {
-		b2 = get_b2(b1);
-		printf("%s al, %d\n", opcode_fmt(op), combine_bytes(b1, b2));
+		printf("%s al, %d\n", opcode_fmt(op), n);
 	} else {
-		b2 = peek();
-		printf("%s ax, %d\n", opcode_fmt(op), combine_bytes(b1, b2));
+		printf("%s ax, %d\n", opcode_fmt(op), n);
 	}
 
 }
@@ -353,17 +353,13 @@ void str(const opcode op, const byte b) {
 }
 
 void direct_segment(const opcode op) {
-	byte b1 = peek();
-	byte b2 = peek();
-	printf("%s %d\n", opcode_fmt(op), combine_bytes(b1, b2)+i+1);
+	printf("%s %d\n", opcode_fmt(op), read_bytes(1)+i+1);
 }
 
 void direct_intersegment(const opcode op) {
-	byte ip_lo = peek();
-	byte ip_hi = peek();
-	byte cs_lo = peek();
-	byte cs_hi = peek();
-	printf("%s %d:%d\n", opcode_fmt(op), combine_bytes(cs_lo, cs_hi), combine_bytes(ip_lo, ip_hi));
+	int16_t ip = read_bytes(1);
+	int16_t cs = read_bytes(1);
+	printf("%s %d:%d\n", opcode_fmt(op), cs, ip);
 }
 
 int main(int argc, char *argv[]) {
@@ -455,17 +451,9 @@ int main(int argc, char *argv[]) {
 		case 0b10011001: printf("%s\n", opcode_fmt(OPCODE_CWD)); goto next;
 
 		case 0b11000011: printf("%s\n", opcode_fmt(OPCODE_RET)); goto next;
-		case 0b11000010:
-			b1 = peek();
-			b2 = peek();
-			printf("%s %d\n", opcode_fmt(OPCODE_RET), combine_bytes(b1, b2));
-			goto next;
+		case 0b11000010: printf("%s %d\n", opcode_fmt(OPCODE_RET), read_bytes(1)); goto next;
 		case 0b11001011: printf("%s\n", opcode_fmt(OPCODE_RETF)); goto next;
-		case 0b11001010:
-			b1 = peek();
-			b2 = peek();
-			printf("%s %d\n", opcode_fmt(OPCODE_RETF), combine_bytes(b1, b2));
-			goto next;
+		case 0b11001010: printf("%s %d\n", opcode_fmt(OPCODE_RETF), read_bytes(1)); goto next;
 
 		case 0b11101000: direct_segment(OPCODE_CALL); goto next;
 		case 0b10011010: direct_intersegment(OPCODE_CALL); goto next;
@@ -586,36 +574,14 @@ int main(int argc, char *argv[]) {
 
 		case 0b10100000: // Memory to accumulator
 			op = OPCODE_MOV;
-
 			w = nth(b, 0);
-
-			b1 = peek();
-			if (w == 0) {
-				b2 = get_b2(b1);
-			} else {
-				b2 = peek();
-			}
-
-			printf("%s ax, [%d]\n", opcode_fmt(op),
-			       combine_bytes(b1, b2));
-
+			printf("%s ax, [%d]\n", opcode_fmt(op), read_bytes(w));
 			goto next;
 
 		case 0b10100010: // Accumulator to memory
 			op = OPCODE_MOV;
-
 			w = nth(b, 0);
-
-			b1 = peek();
-			if (w == 0) {
-				b2 = get_b2(b1);
-			} else {
-				b2 = peek();
-			}
-
-			printf("%s [%d], ax\n", opcode_fmt(op),
-			       combine_bytes(b1, b2));
-
+			printf("%s [%d], ax\n", opcode_fmt(op), read_bytes(w));
 			goto next;
 
 		case 0b10000000:
@@ -706,19 +672,9 @@ int main(int argc, char *argv[]) {
 		switch (b & 0b11110000) {
 		case 0b10110000: // Immediate to register
 			op = OPCODE_MOV;
-
 			w = nth(b, 3);
 			reg = register_match(b, w);
-
-			b1 = peek();
-			if (w == 0) {
-				b2 = get_b2(b1);
-			} else {
-				b2 = peek();
-			}
-
-			printf("%s %s, %d\n", opcode_fmt(op), register_fmt(reg),
-			       combine_bytes(b1, b2));
+			printf("%s %s, %d\n", opcode_fmt(op), register_fmt(reg), read_bytes(w));
 			goto next;
 		}
 	next:
