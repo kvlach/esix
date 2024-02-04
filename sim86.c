@@ -507,15 +507,7 @@ int main(int argc, char *argv[]) {
 			reg_mem_with_reg_either(OPCODE_XCHG, b^((mod != MODE_REGISTER) << 1), false);
 			goto next;
 
-		case 0b11100100:
-			// little endian
-			w = nth(b, 0);
-			if (w == 0) {
-				printf("%s al, %d\n", opcode_fmt(OPCODE_IN), (byte)peek());
-			} else {
-				printf("%s ax, %d\n", opcode_fmt(OPCODE_IN), (byte)peek());
-			}
-			goto next;
+		case 0b11100100: immediate_to_accumulator(OPCODE_IN, b); goto next;
 		case 0b11101100:
 			// little endian
 			w = nth(b, 0);
