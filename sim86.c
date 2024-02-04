@@ -6,6 +6,9 @@
 
 #include "sim86.h"
 
+#define FLAG_WIDE (1 << 0)
+#define FLAG_PRINT_WORD_BYTE (1 << 1)
+
 typedef unsigned char byte;
 
 int16_t combine_bytes(byte low, byte high) {
@@ -118,31 +121,40 @@ effective_addr effective_addr_match(byte b, const mode mod) {
 	return effective_addrs[b];
 }
 
-char *effective_addr_fmt(effective_addr ea, mode mod, int16_t disp) {
+char *effective_addr_fmt(effective_addr ea, mode mod, int16_t disp, int flags) {
 	// Max number of required bytes:
+	//   "word " or "byte " -> 5 bytes
 	//   "[]" -> 2 bytes
 	//   "bx + si" -> 7 bytes
 	//   " + " or " - " -> 3 bytes
 	//   2**16 = 65536 -> 5 bytes
 	// A total of 17 bytes.
-	char *fmt = (char *)malloc(17);
+	char *fmt = (char *)malloc(22);
 	if (fmt == NULL) {
 		return NULL;
 	}
 
+	if (flags & FLAG_PRINT_WORD_BYTE) {
+		if (flags & FLAG_WIDE) {
+			strcat(fmt, "word ");
+		} else {
+			strcat(fmt, "byte ");
+		}
+	}
+
 	if (ea == EFFECTIVE_ADDR_DIRECT_ADDR) {
-		sprintf(fmt, "[%d]", disp);
+		sprintf(fmt+strlen(fmt), "[%d]", disp);
 		return fmt;
 	}
 
 	const char *ea_fmt = effective_addrs_fmt[ea];
 
 	if (mod == MODE_MEMORY_NO_DISPLACEMENT || disp == 0) {
-		sprintf(fmt, "[%s]", ea_fmt);
+		sprintf(fmt+strlen(fmt), "[%s]", ea_fmt);
 	} else if (disp > 0) {
-		sprintf(fmt, "[%s + %d]", ea_fmt, disp);
+		sprintf(fmt+strlen(fmt), "[%s + %d]", ea_fmt, disp);
 	} else {
-		sprintf(fmt, "[%s - %d]", ea_fmt, -disp);
+		sprintf(fmt+strlen(fmt), "[%s - %d]", ea_fmt, -disp);
 	}
 
 	return fmt;
@@ -153,6 +165,7 @@ typedef struct {
 	register_ reg;
 	effective_addr ea;
 	int16_t disp;
+	int flags;
 } register_memory;
 
 register_memory register_memory_match(byte b, const mode mod, const bool w) {
@@ -161,25 +174,35 @@ register_memory register_memory_match(byte b, const mode mod, const bool w) {
 	if (mod == MODE_MEMORY_16BIT_DISPLACEMENT || ea == EFFECTIVE_ADDR_DIRECT_ADDR) {
 		byte low = peek();
 		byte high = peek();
-		return (register_memory){ .mod = mod, .ea = ea, .disp = combine_bytes(low, high) };
+		return (register_memory){
+		    .mod   = mod,
+		    .ea    = ea,
+		    .disp  = combine_bytes(low, high),
+		    .flags = w == 1 ? FLAG_WIDE : 0,
+		};
 	}
 
 	if (mod == MODE_MEMORY_8BIT_DISPLACEMENT) {
-		return (register_memory){ .mod = mod, .ea = ea, .disp = peek() };
+		return (register_memory){
+		    .mod   = mod,
+		    .ea    = ea,
+		    .disp  = peek(),
+		    .flags = w == 1 ? FLAG_WIDE : 0,
+		};
 	}
 
 	if (mod == MODE_MEMORY_NO_DISPLACEMENT) {
-		return (register_memory){ .mod = mod, .ea = ea };
+		return (register_memory){ .mod = mod, .ea = ea, .flags = w == 1 ? FLAG_WIDE : 0 };
 	}
 
 	return (register_memory){ .mod = mod, .reg = register_match(b, w) };
 }
 
-const char *register_memory_fmt(register_memory r_m) {
+const char *register_memory_fmt(register_memory r_m, int flags) {
 	if (r_m.mod == MODE_REGISTER) {
 		return register_fmt(r_m.reg);
 	}
-	return effective_addr_fmt(r_m.ea, r_m.mod, r_m.disp);
+	return effective_addr_fmt(r_m.ea, r_m.mod, r_m.disp, r_m.flags | flags);
 }
 
 byte get_b2(u_int8_t b1) {
@@ -207,9 +230,9 @@ void reg_mem_with_reg_either(const opcode op, byte b, const bool sr) {
 	register_memory r_m = register_memory_match(b, mod, w);
 
 	if (d == 0) {
-		printf("%s %s, %s\n", opcode_fmt(op), register_memory_fmt(r_m), register_fmt(reg));
+		printf("%s %s, %s\n", opcode_fmt(op), register_memory_fmt(r_m, 0), register_fmt(reg));
 	} else {
-		printf("%s %s, %s\n", opcode_fmt(op), register_fmt(reg), register_memory_fmt(r_m));
+		printf("%s %s, %s\n", opcode_fmt(op), register_fmt(reg), register_memory_fmt(r_m, 0));
 	}
 }
 
@@ -231,11 +254,7 @@ void immediate_to_reg_mem(const opcode op, byte b) {
 
 	int16_t n = combine_bytes(data1, data2);
 
-	if (w == 0) {
-		printf("%s %s, byte %d\n", opcode_fmt(op), register_memory_fmt(r_m), n);
-	} else {
-		printf("%s %s, word %d\n", opcode_fmt(op), register_memory_fmt(r_m), n);
-	}
+	printf("%s %s, %d\n", opcode_fmt(op), register_memory_fmt(r_m, FLAG_PRINT_WORD_BYTE), n);
 }
 
 void immediate_to_reg_mem_sign(const opcode op, byte b) {
@@ -259,11 +278,7 @@ void immediate_to_reg_mem_sign(const opcode op, byte b) {
 		n = (int16_t)data1;
 	}
 
-	if (w == 0) {
-		printf("%s %s, byte %d\n", opcode_fmt(op), register_memory_fmt(r_m), n);
-	} else {
-		printf("%s %s, word %d\n", opcode_fmt(op), register_memory_fmt(r_m), n);
-	}
+	printf("%s %s, %d\n", opcode_fmt(op), register_memory_fmt(r_m, FLAG_PRINT_WORD_BYTE), n);
 }
 
 void immediate_to_accumulator(opcode op, byte b) {
@@ -294,14 +309,14 @@ void jump(opcode op) {
 void reg_mem_print(const opcode op, const byte b) {
 	mode mod = mode_match(b);
 	register_memory r_m = register_memory_match(b, mod, 1);
-	printf("%s word %s\n", opcode_fmt(op), register_memory_fmt(r_m));
+	printf("%s word %s\n", opcode_fmt(op), register_memory_fmt(r_m, FLAG_PRINT_WORD_BYTE));
 }
 
 void reg_mem_far(const opcode op) {
 	const byte b = peek();
 	mode mod = mode_match(b);
 	register_memory r_m = register_memory_match(b, mod, 1);
-	printf("%s far %s\n", opcode_fmt(op), register_memory_fmt(r_m));
+	printf("%s far %s\n", opcode_fmt(op), register_memory_fmt(r_m, 0));
 }
 
 void reg_mem_wide_print(const opcode op, byte b) {
@@ -310,11 +325,7 @@ void reg_mem_wide_print(const opcode op, byte b) {
 	b = peek();
 	mode mod = mode_match(b);
 	register_memory r_m = register_memory_match(b, mod, w);
-	if (w == 0) {
-		printf("%s byte %s\n", opcode_fmt(op), register_memory_fmt(r_m));
-	} else {
-		printf("%s word %s\n", opcode_fmt(op), register_memory_fmt(r_m));
-	}
+	printf("%s far %s\n", opcode_fmt(op), register_memory_fmt(r_m, 0));
 }
 
 void seg_reg_print(const opcode op, const byte b) {
@@ -335,14 +346,10 @@ void v_w_reg_mem(const opcode op, byte b) {
 
 	mode mod = mode_match(b);
 	register_memory r_m = register_memory_match(b, mod, w);
-	if (w == 0 && v == 0) {
-		printf("%s byte %s, 1\n", opcode_fmt(op), register_memory_fmt(r_m));
-	} else if (w == 0 && v == 1) {
-		printf("%s byte %s, cl\n", opcode_fmt(op), register_memory_fmt(r_m));
-	} else if (w == 1 && v == 0) {
-		printf("%s word %s, 1\n", opcode_fmt(op), register_memory_fmt(r_m));
+	if (v) {
+		printf("%s %s, cl\n", opcode_fmt(op), register_memory_fmt(r_m, FLAG_PRINT_WORD_BYTE));
 	} else {
-		printf("%s word %s, cl\n", opcode_fmt(op), register_memory_fmt(r_m));
+		printf("%s %s, 1\n", opcode_fmt(op), register_memory_fmt(r_m, FLAG_PRINT_WORD_BYTE));
 	}
 }
 
