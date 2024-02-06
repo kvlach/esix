@@ -364,6 +364,216 @@ void direct_intersegment(const opcode op) {
 	printf("%s %d:%d\n", opcode_fmt(op), cs, ip);
 }
 
+instruction instruction_match() {
+	// first 8 bits
+	switch (b & 0b11111111) {
+	case 0b11010111: return INST_XLAT;
+	case 0b10001101: return INST_LEA;
+	case 0b11000101: return INST_LDS;
+	case 0b11000100: return INST_LES;
+	case 0b10011111: return INST_LAHF;
+	case 0b10011110: return INST_SAHF;
+	case 0b10011100: return INST_PUSHF;
+	case 0b10011101: return INST_POPF;
+	case 0b00110111: return INST_AAA;
+	case 0b00100111: return INST_DAA;
+	case 0b00111111: return INST_AAS;
+	case 0b00101111: return INST_DAS;
+	case 0b10011000: return INST_CBW;
+	case 0b10011001: return INST_CWD;
+	case 0b11000011: return INST_RET_SEG;
+	case 0b11000010: return INST_RET_SEG_IMM_TO_SP;
+	case 0b11001011: return INST_RET_ISEG;
+	case 0b11001010: return INST_RET_ISEG_IMM_TO_SP;
+	case 0b11101000: return INST_CALL_DIRECT_SEG;
+	case 0b10011010: return INST_CALL_DIRECT_ISEG;
+	case 0b11101001: return INST_JMP_DIRECT_SEG;
+	case 0b11101010: return INST_JMP_DIRECT_ISEG;
+	case 0b01110100: return INST_JE_JZ;
+	case 0b01111100: return INST_JL_JNGE;
+	case 0b01111110: return INST_JLE_JNG;
+	case 0b01110010: return INST_JB_JNAE;
+	case 0b01110110: return INST_JBE_JNA;
+	case 0b01111010: return INST_JP_JPE;
+	case 0b01110000: return INST_JO;
+	case 0b01111000: return INST_JS;
+	case 0b01110101: return INST_JNE_JNZ;
+	case 0b01111101: return INST_JNL_JGE;
+	case 0b01111111: return INST_JNLE_JG;
+	case 0b01110011: return INST_JNB_JAE;
+	case 0b01110111: return INST_JNBE_JA;
+	case 0b01111011: return INST_JNP_JPO;
+	case 0b01110001: return INST_JNO;
+	case 0b01111001: return INST_JNS;
+	case 0b11100010: return INST_LOOP;
+	case 0b11100001: return INST_LOOPZ_LOOPE;
+	case 0b11100000: return INST_LOOPNZ_LOOPNE;
+	case 0b11100011: return INST_JCXZ;
+	case 0b11001101: return INST_INT_TYPE_SPECIFIED;
+	case 0b11001100: return INST_INT_TYPE_3;
+	case 0b11001110: return INST_INTO;
+	case 0b11001111: return INST_IRET;
+	case 0b11111000: return INST_CLC;
+	case 0b11110101: return INST_CMC;
+	case 0b11111001: return INST_STC;
+	case 0b11111100: return INST_CLD;
+	case 0b11111101: return INST_STD;
+	case 0b11111010: return INST_CLI;
+	case 0b11111011: return INST_STI;
+	case 0b11110100: return INST_HLT;
+	case 0b10011011: return INST_WAIT;
+	case 0b11110000: return INST_LOCK;
+
+	case 0b11111111:
+		switch (buf[i+1] & 0b00111000) {
+		case 0b00110000: return INST_PUSH_RM;
+		case 0b00010000: return INST_CALL_INDIRECT_SEG;
+		case 0b00011000: return INST_CALL_INDIRECT_ISEG;
+		case 0b00100000: return INST_JMP_INDIRECT_SEG;
+		case 0b00101000: return INST_JMP_INDIRECT_ISEG;
+		}
+		break;
+
+	case 0b10001111:
+		switch (buf[i+1] & 0b00111000) {
+		case 0b00000000: return INST_POP_RM;
+		}
+		break;
+
+	case 0b11010100:
+		switch (buf[i+1] & 0b11111111) {
+		case 0b00001010: return INST_AAM;
+		}
+		break;
+
+	case 0b11010101:
+		switch (buf[i+1] & 0b11111111) {
+		case 0b00001010: return INST_AAD;
+		}
+		break;
+
+	case 0b10001110:
+		switch (buf[i+1] & 0b00100000) {
+		case 0b00000000: return INST_MOV_RM_SR;
+		}
+		break;
+	case 0b10001100:
+		switch (buf[i+1] & 0b00100000) {
+		case 0b00000000: return INST_MOV_SR_RM;
+		}
+		break;
+	}
+
+	// first 7 bits
+	switch (b & 0b11111110) {
+	case 0b11000110: return INST_MOV_IMM_RM;
+	case 0b10000110: return INST_XCHG_RM_REG;
+	case 0b11100100: return INST_IN_VARIABLE_PORT;
+	case 0b11101100: return INST_IN_FIXED_PORT;
+	case 0b11100110: return INST_OUT_VARIABLE_PORT;
+	case 0b11101110: return INST_OUT_FIXED_PORT;
+	case 0b00000100: return INST_ADD_IMM_ACC;
+	case 0b00010100: return INST_ADC_IMM_ACC;
+	case 0b00101100: return INST_SUB_IMM_ACC;
+	case 0b00011100: return INST_SBB_IMM_ACC;
+	case 0b00111100: return INST_CMP_IMM_ACC;
+	case 0b10100000: return INST_MOV_MEM_ACC;
+	case 0b10100010: return INST_MOV_ACC_MEM;
+	case 0b00100100: return INST_AND_IMM_ACC;
+	case 0b10101000: return INST_TEST_IMM_ACC;
+	case 0b00001100: return INST_OR_IMM_ACC;
+	case 0b00110100: return INST_XOR_IMM_ACC;
+	case 0b11110010: return INST_REP;
+	case 0b10100100: return INST_MOVS;
+	case 0b10100110: return INST_CMPS;
+	case 0b10101110: return INST_SCAS;
+	case 0b10101100: return INST_LODS;
+	case 0b10101010: return INST_STOS;
+
+	case 0b11111110:
+		switch (buf[i+1] & 0b00111000) {
+		case 0b00000000: return INST_INC_RM;
+		case 0b00001000: return INST_DEC_RM;
+		}
+		break;
+
+	case 0b11110110:
+		switch (buf[i+1] & 0b00111000) {
+		case 0b00011000: return INST_NEG;
+		case 0b00100000: return INST_MUL;
+		case 0b00101000: return INST_IMUL;
+		case 0b00110000: return INST_DIV;
+		case 0b00111000: return INST_IDIV;
+		case 0b00010000: return INST_NOT;
+		case 0b00000000: return INST_TEST_IMM_RM;
+		}
+		break;
+
+	case 0b10000000:
+		switch (buf[i+1] & 0b00111000) {
+		case 0b00100000: return INST_AND_IMM_RM;
+		case 0b00001000: return INST_OR_IMM_RM;
+		case 0b00110000: return INST_XOR_IMM_RM;
+		}
+		break;
+	}
+
+	// first 6 bits
+	switch (b & 0b11111100) {
+	case 0b10001000: return INST_MOV_RM_REG;
+	case 0b00000000: return INST_ADD_RM_REG;
+	case 0b00010000: return INST_ADC_RM_REG;
+	case 0b00101000: return INST_SUB_RM_REG;
+	case 0b00011000: return INST_SBB_RM_REG;
+	case 0b00111000: return INST_CMP_RM_REG;
+	case 0b00100000: return INST_AND_RM_REG;
+	case 0b10000100: return INST_TEST_RM_REG;
+	case 0b00001000: return INST_OR_RM_REG;
+	case 0b00110000: return INST_XOR_RM_REG;
+
+	case 0b10000000:
+		switch (buf[i+1] & 0b00111000) {
+		case 0b00000000: return INST_ADD_IMM_RM;
+		case 0b00010000: return INST_ADC_IMM_RM;
+		case 0b00101000: return INST_SUB_IMM_RM;
+		case 0b00011000: return INST_SBB_IMM_RM;
+		case 0b00111000: return INST_CMP_IMM_RM;
+		}
+		break;
+
+	case 0b11010000:
+		switch (buf[i+1] & 0b00111000) {
+		case 0b00100000: return INST_SHL_SAL;
+		case 0b00101000: return INST_SHR;
+		case 0b00111000: return INST_SAR;
+		case 0b00000000: return INST_ROL;
+		case 0b00001000: return INST_ROR;
+		case 0b00010000: return INST_RCL;
+		case 0b00011000: return INST_RCR;
+		}
+		break;
+	}
+
+	switch (b & 0b11100111) {
+	case 0b00000110: return INST_PUSH_SR;
+	case 0b00000111: return INST_POP_SR;
+	}
+
+	// first 5 bits
+	switch (b & 0b11111000) {
+	case 0b01010000: return INST_PUSH_REG;
+	case 0b01011000: return INST_POP_REG;
+	case 0b10010000: return INST_XCHG_REG_ACC;
+	case 0b01000000: return INST_INC_REG;
+	case 0b01001000: return INST_DEC_REG;
+	}
+
+	// first 4 bits
+	switch (b & 0b11110000) {
+	case 0b10110000: return INST_MOV_IMM_REG;
+	}
+}
+
 void disassemble_instruction() {
 	mode mod;
 	register_ reg;
