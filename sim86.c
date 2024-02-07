@@ -364,7 +364,88 @@ void direct_intersegment(const opcode op) {
 	printf("%s %d:%d\n", opcode_fmt(op), cs, ip);
 }
 
+instruction instructions[256] = { 0 };
+
 instruction instruction_match() {
+	instruction inst = INST_NULL;
+	uint8_t mask = 0b11111111;
+	while (inst == INST_NULL) {
+		// We only need up to 4 shifts, 0b11110000 == 240
+		if (mask < 240) {
+			break;
+		}
+		inst = instructions[b & mask];
+		mask <<= 1;
+	}
+
+	byte next = buf[i+1];
+
+	switch (inst) {
+	case INST_128:
+	case INST_208:
+	case INST_246:
+	case INST_254:
+		return instructions[((next & 0b00111000) >> 3) + inst];
+	case INST_AAM:
+		if (next == 0b00001010) {
+			return INST_AAM;
+		}
+		// TODO: is it an error if nothing is matched here?
+	}
+
+	switch (inst) {
+	case INST_128:
+		switch (buf[i+1] & 0b00111000) {
+		case 0b00000000: return INST_ADD_IMM_RM;
+		case 0b00001000: return INST_OR_IMM_RM;
+		case 0b00010000: return INST_ADC_IMM_RM;
+		case 0b00011000: return INST_SBB_IMM_RM;
+		case 0b00100000: return INST_AND_IMM_RM;
+		case 0b00101000: return INST_SUB_IMM_RM;
+		case 0b00110000: return INST_XOR_IMM_RM;
+		case 0b00111000: return INST_CMP_IMM_RM;
+		}
+		break;
+
+	case INST_208:
+		switch (buf[i+1] & 0b00111000) {
+		case 0b00000000: return INST_ROL;
+		case 0b00001000: return INST_ROR;
+		case 0b00010000: return INST_RCL;
+		case 0b00011000: return INST_RCR;
+		case 0b00100000: return INST_SHL_SAL;
+		case 0b00101000: return INST_SHR;
+		case 0b00111000: return INST_SAR;
+		}
+		break;
+
+	case INST_246:
+		switch (buf[i+1] & 0b00111000) {
+		case 0b00000000: return INST_TEST_IMM_RM;
+		case 0b00010000: return INST_NOT;
+		case 0b00011000: return INST_NEG;
+		case 0b00100000: return INST_MUL;
+		case 0b00101000: return INST_IMUL;
+		case 0b00110000: return INST_DIV;
+		case 0b00111000: return INST_IDIV;
+		}
+		break;
+
+	case INST_254:
+		switch (buf[i+1] & 0b00111000) {
+		case 0b00000000: return INST_INC_RM;
+		case 0b00001000: return INST_DEC_RM;
+		}
+		break;
+
+	}
+
+	if (inst == INST_NULL) {
+		inst = instructions[b & 0b11100111];
+	}
+
+	return inst;
+
 	// first 8 bits
 	switch (b & 0b11111111) {
 	case 0b11010111: return INST_XLAT;
@@ -489,33 +570,6 @@ instruction instruction_match() {
 	case 0b10101110: return INST_SCAS;
 	case 0b10101100: return INST_LODS;
 	case 0b10101010: return INST_STOS;
-
-	case 0b11111110:
-		switch (buf[i+1] & 0b00111000) {
-		case 0b00000000: return INST_INC_RM;
-		case 0b00001000: return INST_DEC_RM;
-		}
-		break;
-
-	case 0b11110110:
-		switch (buf[i+1] & 0b00111000) {
-		case 0b00011000: return INST_NEG;
-		case 0b00100000: return INST_MUL;
-		case 0b00101000: return INST_IMUL;
-		case 0b00110000: return INST_DIV;
-		case 0b00111000: return INST_IDIV;
-		case 0b00010000: return INST_NOT;
-		case 0b00000000: return INST_TEST_IMM_RM;
-		}
-		break;
-
-	case 0b10000000:
-		switch (buf[i+1] & 0b00111000) {
-		case 0b00100000: return INST_AND_IMM_RM;
-		case 0b00001000: return INST_OR_IMM_RM;
-		case 0b00110000: return INST_XOR_IMM_RM;
-		}
-		break;
 	}
 
 	// first 6 bits
@@ -530,28 +584,6 @@ instruction instruction_match() {
 	case 0b10000100: return INST_TEST_RM_REG;
 	case 0b00001000: return INST_OR_RM_REG;
 	case 0b00110000: return INST_XOR_RM_REG;
-
-	case 0b10000000:
-		switch (buf[i+1] & 0b00111000) {
-		case 0b00000000: return INST_ADD_IMM_RM;
-		case 0b00010000: return INST_ADC_IMM_RM;
-		case 0b00101000: return INST_SUB_IMM_RM;
-		case 0b00011000: return INST_SBB_IMM_RM;
-		case 0b00111000: return INST_CMP_IMM_RM;
-		}
-		break;
-
-	case 0b11010000:
-		switch (buf[i+1] & 0b00111000) {
-		case 0b00100000: return INST_SHL_SAL;
-		case 0b00101000: return INST_SHR;
-		case 0b00111000: return INST_SAR;
-		case 0b00000000: return INST_ROL;
-		case 0b00001000: return INST_ROR;
-		case 0b00010000: return INST_RCL;
-		case 0b00011000: return INST_RCR;
-		}
-		break;
 	}
 
 	switch (b & 0b11100111) {
