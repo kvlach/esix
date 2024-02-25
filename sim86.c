@@ -229,7 +229,7 @@ int nth(byte b, int n) { return (b >> n) & 1; }
 
 byte b;
 
-void reg_mem_with_reg_either(const opcode op, const bool sr) {
+void rm_reg(const opcode op, const bool sr) {
 	// little endian
 	bool d = nth(b, 1);
 	bool w = nth(b, 0);
@@ -261,7 +261,7 @@ void immediate_to_reg_mem(const opcode op) {
 	printf("%s %s, %d\n", opcode_fmt(op), register_memory_fmt(r_m, FLAG_PRINT_WORD_BYTE), n);
 }
 
-void immediate_to_reg_mem_sign(const opcode op) {
+void imm_rm_sign(const opcode op) {
 	// little endian
 	bool w = nth(b, 0);
 	bool s = nth(b, 1);
@@ -284,7 +284,7 @@ void immediate_to_reg_mem_sign(const opcode op) {
 	printf("%s %s, %d\n", opcode_fmt(op), register_memory_fmt(r_m, FLAG_PRINT_WORD_BYTE), n);
 }
 
-void immediate_to_accumulator(opcode op) {
+void imm_acc(opcode op) {
 	bool w = nth(b, 0);
 
 	int16_t n = read_bytes(w);
@@ -468,8 +468,8 @@ instruction instruction_match() {
 	switch (b & 0b11111110) {
 	case 0b11000110: return INST_MOV_IMM_RM;
 	case 0b10000110: return INST_XCHG_RM_REG;
-	case 0b11100100: return INST_IN_VARIABLE_PORT;
-	case 0b11101100: return INST_IN_FIXED_PORT;
+	case 0b11101100: return INST_IN_VARIABLE_PORT;
+	case 0b11100100: return INST_IN_FIXED_PORT;
 	case 0b11100110: return INST_OUT_VARIABLE_PORT;
 	case 0b11101110: return INST_OUT_FIXED_PORT;
 	case 0b00000100: return INST_ADD_IMM_ACC;
@@ -574,123 +574,55 @@ instruction instruction_match() {
 	}
 }
 
-void disassemble_instruction() {
+void disassemble_instruction(instruction inst) {
 	mode mod;
 	register_ reg;
 	bool w;
 
-	// first 8 bits
-	switch (b & 0b11111111) {
-	case 0b11111111:
-		switch (buf[i+1] & 0b00111000) {
-		case 0b00110000: w_reg_mem(OPCODE_PUSH); return;
-		case 0b00010000: w_reg_mem(OPCODE_CALL); return;
-		case 0b00011000: reg_mem_far(OPCODE_CALL); return;
-		case 0b00100000: w_reg_mem(OPCODE_JMP); return;
-		case 0b00101000: reg_mem_far(OPCODE_JMP); return;
-		}
-		break;
-	case 0b10001111:
-		if ((buf[i+1] & 0b00111000) == 0b00000000) {
-			w_reg_mem(OPCODE_POP);
-			return;
-		}
-		break;
-	case 0b11010111: printf("%s\n", opcode_fmt(OPCODE_XLAT)); return;
+	switch (inst) {
+	case INST_MOV_RM_REG:
+		rm_reg(OPCODE_MOV, false); return;
+	case INST_MOV_IMM_RM: immediate_to_reg_mem(OPCODE_MOV); return;
+	case INST_MOV_IMM_REG:
+		w = nth(b, 3);
+		reg = register_match(b, w);
+		printf("%s %s, %d\n", opcode_fmt(OPCODE_MOV), register_fmt(reg), read_bytes(w));
+		return;
+	case INST_MOV_MEM_ACC:
+		w = nth(b, 0);
+		printf("%s ax, [%d]\n", opcode_fmt(OPCODE_MOV), read_bytes(w));
+		return;
+	case INST_MOV_ACC_MEM:
+		w = nth(b, 0);
+		printf("%s [%d], ax\n", opcode_fmt(OPCODE_MOV), read_bytes(w));
+		return;
+	// implicit d-bit
+	case INST_MOV_RM_SR:
+	case INST_MOV_SR_RM:
+		rm_reg(OPCODE_MOV, true); return;
 
-		// xor to flip the pretend d bit
-	case 0b10001101: b^=0b10; reg_mem_with_reg_either(OPCODE_LEA, false); return;
-	case 0b11000101: b^=0b10; reg_mem_with_reg_either(OPCODE_LDS, false); return;
+	case INST_PUSH_RM:  w_reg_mem(OPCODE_PUSH);     return;
+	case INST_PUSH_REG: reg_print(OPCODE_PUSH);     return;
+	case INST_PUSH_SR:  seg_reg_print(OPCODE_PUSH); return;
 
-		// xor to flip the pretend d and w bits
-	case 0b11000100: b^=0b11, reg_mem_with_reg_either(OPCODE_LES, false); return;
+	case INST_POP_RM:  w_reg_mem(OPCODE_POP);     return;
+	case INST_POP_REG: reg_print(OPCODE_POP);     return;
+	case INST_POP_SR:  seg_reg_print(OPCODE_POP); return;
 
-	case 0b10011111: printf("%s\n", opcode_fmt(OPCODE_LAHF)); return;
-	case 0b10011110: printf("%s\n", opcode_fmt(OPCODE_SAHF)); return;
-	case 0b10011100: printf("%s\n", opcode_fmt(OPCODE_PUSHF)); return;
-	case 0b10011101: printf("%s\n", opcode_fmt(OPCODE_POPF)); return;
-
-	case 0b00110111: printf("%s\n", opcode_fmt(OPCODE_AAA)); return;
-	case 0b00100111: printf("%s\n", opcode_fmt(OPCODE_DAA)); return;
-
-	case 0b00111111: printf("%s\n", opcode_fmt(OPCODE_AAS)); return;
-	case 0b00101111: printf("%s\n", opcode_fmt(OPCODE_DAS)); return;
-
-	case 0b11010100:
-		switch (buf[i+1] & 0b11111111) {
-		case 0b00001010: printf("%s\n", opcode_fmt(OPCODE_AAM)); i++; return;
-		}
-		break;
-
-	case 0b11010101:
-		switch (buf[i+1] & 0b11111111) {
-		case 0b00001010: printf("%s\n", opcode_fmt(OPCODE_AAD)); i++; return;
-		}
-		break;
-
-	case 0b10011000: printf("%s\n", opcode_fmt(OPCODE_CBW)); return;
-	case 0b10011001: printf("%s\n", opcode_fmt(OPCODE_CWD)); return;
-
-	case 0b11000011: printf("%s\n", opcode_fmt(OPCODE_RET)); return;
-	case 0b11000010: printf("%s %d\n", opcode_fmt(OPCODE_RET), read_bytes(1)); return;
-	case 0b11001011: printf("%s\n", opcode_fmt(OPCODE_RETF)); return;
-	case 0b11001010: printf("%s %d\n", opcode_fmt(OPCODE_RETF), read_bytes(1)); return;
-
-	case 0b11101000: direct_segment(OPCODE_CALL); return;
-	case 0b10011010: direct_intersegment(OPCODE_CALL); return;
-	case 0b11101001: direct_segment(OPCODE_JMP); return;
-	case 0b11101010: direct_intersegment(OPCODE_JMP); return;
-
-	case 0b01110100: jump(OPCODE_JE); return;
-	case 0b01111100: jump(OPCODE_JL); return;
-	case 0b01111110: jump(OPCODE_JLE); return;
-	case 0b01110010: jump(OPCODE_JB); return;
-	case 0b01110110: jump(OPCODE_JBE); return;
-	case 0b01111010: jump(OPCODE_JP); return;
-	case 0b01110000: jump(OPCODE_JO); return;
-	case 0b01111000: jump(OPCODE_JS); return;
-	case 0b01110101: jump(OPCODE_JNE); return;
-	case 0b01111101: jump(OPCODE_JNL); return;
-	case 0b01111111: jump(OPCODE_JG); return;
-	case 0b01110011: jump(OPCODE_JNB); return;
-	case 0b01110111: jump(OPCODE_JA); return;
-	case 0b01111011: jump(OPCODE_JNP); return;
-	case 0b01110001: jump(OPCODE_JNO); return;
-	case 0b01111001: jump(OPCODE_JNS); return;
-	case 0b11100010: jump(OPCODE_LOOP); return;
-	case 0b11100001: jump(OPCODE_LOOPZ); return;
-	case 0b11100000: jump(OPCODE_LOOPNZ); return;
-	case 0b11100011: jump(OPCODE_JCXZ); return;
-
-	case 0b11001101: printf("%s %d\n", opcode_fmt(OPCODE_INT), peek()); return;
-	case 0b11001100: printf("%s3\n", opcode_fmt(OPCODE_INT)); return;
-	case 0b11001110: printf("%s\n", opcode_fmt(OPCODE_INTO)); return;
-	case 0b11001111: printf("%s\n", opcode_fmt(OPCODE_IRET)); return;
-	case 0b11111000: printf("%s\n", opcode_fmt(OPCODE_CLC)); return;
-	case 0b11110101: printf("%s\n", opcode_fmt(OPCODE_CMC)); return;
-	case 0b11111001: printf("%s\n", opcode_fmt(OPCODE_STC)); return;
-	case 0b11111100: printf("%s\n", opcode_fmt(OPCODE_CLD)); return;
-	case 0b11111101: printf("%s\n", opcode_fmt(OPCODE_STD)); return;
-	case 0b11111010: printf("%s\n", opcode_fmt(OPCODE_CLI)); return;
-	case 0b11111011: printf("%s\n", opcode_fmt(OPCODE_STI)); return;
-	case 0b11110100: printf("%s\n", opcode_fmt(OPCODE_HLT)); return;
-	case 0b10011011: printf("%s\n", opcode_fmt(OPCODE_WAIT)); return;
-	case 0b11110000: printf("%s ", opcode_fmt(OPCODE_LOCK)); return;
-	}
-
-	// first 7 bits
-	switch (b & 0b11111110) {
-	case 0b11000110: immediate_to_reg_mem(OPCODE_MOV); return;
-	case 0b10000110:
+	case INST_XCHG_RM_REG:
 		// nasm is picky about the order of operands, so we
 		// always flip the pretend d-bit except when MODE_REGISTER
 		mod = mode_match(buf[i+1]);
-		b ^= ((mod != MODE_REGISTER) << 1);
-		reg_mem_with_reg_either(OPCODE_XCHG, false);
+		b ^= (mod != MODE_REGISTER) << 1;
+		rm_reg(OPCODE_XCHG, false);
+		return;
+	case INST_XCHG_REG_ACC:
+		reg = register_match(b, 1);
+		printf("%s ax, %s\n", opcode_fmt(OPCODE_XCHG), register_fmt(reg));
 		return;
 
-	case 0b11100100: immediate_to_accumulator(OPCODE_IN); return;
-	case 0b11101100:
+	case INST_IN_FIXED_PORT: imm_acc(OPCODE_IN); return;
+	case INST_IN_VARIABLE_PORT:
 		// little endian
 		w = nth(b, 0);
 		if (w == 0) {
@@ -700,16 +632,7 @@ void disassemble_instruction() {
 		}
 		return;
 
-	case 0b11100110:
-		// little endian
-		w = nth(b, 0);
-		if (w == 0) {
-			printf("%s %d, al\n", opcode_fmt(OPCODE_OUT), (byte)peek());
-		} else {
-			printf("%s %d, ax\n", opcode_fmt(OPCODE_OUT), (byte)peek());
-		}
-		return;
-	case 0b11101110:
+	case INST_OUT_FIXED_PORT:
 		// little endian
 		w = nth(b, 0);
 		if (w == 0) {
@@ -718,135 +641,155 @@ void disassemble_instruction() {
 			printf("%s dx, ax\n", opcode_fmt(OPCODE_OUT));
 		}
 		return;
-
-	case 0b00000100: immediate_to_accumulator(OPCODE_ADD); return;
-	case 0b00010100: immediate_to_accumulator(OPCODE_ADC); return;
-
-	case 0b11111110:
-		switch (buf[i+1] & 0b00111000) {
-		case 0b00000000: w_reg_mem(OPCODE_INC); return;
-		case 0b00001000: w_reg_mem(OPCODE_DEC); return;
-		}
-		break;
-
-	case 0b00101100: immediate_to_accumulator(OPCODE_SUB); return;
-	case 0b00011100: immediate_to_accumulator(OPCODE_SBB); return;
-
-	case 0b11110110:
-		switch (buf[i+1] & 0b00111000) {
-		case 0b00011000: w_reg_mem(OPCODE_NEG); return;
-		case 0b00100000: w_reg_mem(OPCODE_MUL); return;
-		case 0b00101000: w_reg_mem(OPCODE_IMUL); return;
-		case 0b00110000: w_reg_mem(OPCODE_DIV); return;
-		case 0b00111000: w_reg_mem(OPCODE_IDIV); return;
-		case 0b00010000: w_reg_mem(OPCODE_NOT); return;
-		case 0b00000000: immediate_to_reg_mem(OPCODE_TEST); return;
-		}
-		break;
-
-	case 0b00111100: immediate_to_accumulator(OPCODE_CMP); return;
-
-	case 0b10100000: // Memory to accumulator
+	case INST_OUT_VARIABLE_PORT:
+		// little endian
 		w = nth(b, 0);
-		printf("%s ax, [%d]\n", opcode_fmt(OPCODE_MOV), read_bytes(w));
+		if (w == 0) {
+			printf("%s %d, al\n", opcode_fmt(OPCODE_OUT), (byte)peek());
+		} else {
+			printf("%s %d, ax\n", opcode_fmt(OPCODE_OUT), (byte)peek());
+		}
 		return;
 
-	case 0b10100010: // Accumulator to memory
-		w = nth(b, 0);
-		printf("%s [%d], ax\n", opcode_fmt(OPCODE_MOV), read_bytes(w));
-		return;
+	case INST_XLAT: printf("%s\n", opcode_fmt(OPCODE_XLAT)); return;
 
-	case 0b10000000:
-		switch (buf[i+1] & 0b00111000) {
-		case 0b00100000: immediate_to_reg_mem(OPCODE_AND); return;
-		case 0b00001000: immediate_to_reg_mem(OPCODE_OR); return;
-		case 0b00110000: immediate_to_reg_mem(OPCODE_XOR); return;
-		}
-		break;
+	// xor to flip the pretend d bit
+	case INST_LEA: b^=0b10; rm_reg(OPCODE_LEA, false); return;
+	case INST_LDS: b^=0b10; rm_reg(OPCODE_LDS, false); return;
 
-	case 0b00100100: immediate_to_accumulator(OPCODE_AND); return;
-	case 0b10101000: immediate_to_accumulator(OPCODE_TEST); return;
-	case 0b00001100: immediate_to_accumulator(OPCODE_OR); return;
-	case 0b00110100: immediate_to_accumulator(OPCODE_XOR); return;
+	// xor to flip the pretend d and w bits
+	case INST_LES: b^=0b11, rm_reg(OPCODE_LES, false); return;
 
-	case 0b11110010: printf("%s ", opcode_fmt(OPCODE_REP)); return;
-	case 0b10100100: str(OPCODE_MOVS); return;
-	case 0b10100110: str(OPCODE_CMPS); return;
-	case 0b10101110: str(OPCODE_SCAS); return;
-	case 0b10101100: str(OPCODE_LODS); return;
-	case 0b10101010: str(OPCODE_STOS); return;
-	}
+	case INST_LAHF:  printf("%s\n", opcode_fmt(OPCODE_LAHF));  return;
+	case INST_SAHF:  printf("%s\n", opcode_fmt(OPCODE_SAHF));  return;
+	case INST_PUSHF: printf("%s\n", opcode_fmt(OPCODE_PUSHF)); return;
+	case INST_POPF:  printf("%s\n", opcode_fmt(OPCODE_POPF));  return;
 
-	// first 6 bits
-	switch (b & 0b11111100) {
-	case 0b10000000:
-		switch (buf[i+1] & 0b00111000) {
-		case 0b00000000: immediate_to_reg_mem_sign(OPCODE_ADD); return;
-		case 0b00010000: immediate_to_reg_mem_sign(OPCODE_ADC); return;
-		case 0b00101000: immediate_to_reg_mem_sign(OPCODE_SUB); return;
-		case 0b00011000: immediate_to_reg_mem_sign(OPCODE_SBB); return;
-		case 0b00111000: immediate_to_reg_mem_sign(OPCODE_CMP); return;
-		}
-		break;
+	case INST_ADD_RM_REG:  rm_reg(OPCODE_ADD, false); return;
+	case INST_ADD_IMM_RM:  imm_rm_sign(OPCODE_ADD); return;
+	case INST_ADD_IMM_ACC: imm_acc(OPCODE_ADD); return;
 
-	case 0b10001000: reg_mem_with_reg_either(OPCODE_MOV, false); return;
-	case 0b00000000: reg_mem_with_reg_either(OPCODE_ADD, false); return;
-	case 0b00010000: reg_mem_with_reg_either(OPCODE_ADC, false); return;
-	case 0b00101000: reg_mem_with_reg_either(OPCODE_SUB, false); return;
-	case 0b00011000: reg_mem_with_reg_either(OPCODE_SBB, false); return;
-	case 0b00111000: reg_mem_with_reg_either(OPCODE_CMP, false); return;
+	case INST_ADC_RM_REG:  rm_reg(OPCODE_ADC, false); return;
+	case INST_ADC_IMM_RM:  imm_rm_sign(OPCODE_ADC); return;
+	case INST_ADC_IMM_ACC: imm_acc(OPCODE_ADC); return;
 
-	case 0b11010000:
-		switch (buf[i+1] & 0b00111000) {
-		case 0b00100000: v_w_reg_mem(OPCODE_SHL); return;
-		case 0b00101000: v_w_reg_mem(OPCODE_SHR); return;
-		case 0b00111000: v_w_reg_mem(OPCODE_SAR); return;
-		case 0b00000000: v_w_reg_mem(OPCODE_ROL); return;
-		case 0b00001000: v_w_reg_mem(OPCODE_ROR); return;
-		case 0b00010000: v_w_reg_mem(OPCODE_RCL); return;
-		case 0b00011000: v_w_reg_mem(OPCODE_RCR); return;
-		}
-		break;
+	case INST_INC_RM:  w_reg_mem(OPCODE_INC); return;
+	case INST_INC_REG: reg_print(OPCODE_INC); return;
 
-	case 0b00100000: reg_mem_with_reg_either(OPCODE_AND, false); return;
-	case 0b10000100: reg_mem_with_reg_either(OPCODE_TEST, false); return;
-	case 0b00001000: reg_mem_with_reg_either(OPCODE_OR, false); return;
-	case 0b00110000: reg_mem_with_reg_either(OPCODE_XOR, false); return;
-	}
+	case INST_AAA: printf("%s\n", opcode_fmt(OPCODE_AAA)); return;
+	case INST_DAA: printf("%s\n", opcode_fmt(OPCODE_DAA)); return;
 
-	switch (b & 0b11100111) {
-	case 0b00000110: seg_reg_print(OPCODE_PUSH); return;
-	case 0b00000111: seg_reg_print(OPCODE_POP); return;
-	}
+	case INST_SUB_RM_REG:  rm_reg(OPCODE_SUB, false); return;
+	case INST_SUB_IMM_RM:  imm_rm_sign(OPCODE_SUB); return;
+	case INST_SUB_IMM_ACC: imm_acc(OPCODE_SUB); return;
 
-	switch (b & 0b11111101) {
-		// implicit d-bit split into two instructions in the manual
-	case 0b10001100:
-		switch (buf[i+1] & 0b00100000) {
-		case 0b00000000: reg_mem_with_reg_either(OPCODE_MOV, true); return;
-		}
-		break;
-	}
+	case INST_SBB_RM_REG:  rm_reg(OPCODE_SBB, false); return;
+	case INST_SBB_IMM_RM:  imm_rm_sign(OPCODE_SBB); return;
+	case INST_SBB_IMM_ACC: imm_acc(OPCODE_SBB); return;
 
-	// first 5 bits
-	switch (b & 0b11111000) {
-	case 0b01010000: reg_print(OPCODE_PUSH); return;
-	case 0b01011000: reg_print(OPCODE_POP); return;
-	case 0b10010000:
-		reg = register_match(b, 1);
-		printf("%s ax, %s\n", opcode_fmt(OPCODE_XCHG), register_fmt(reg));
-		return;
-	case 0b01000000: reg_print(OPCODE_INC); return;
-	case 0b01001000: reg_print(OPCODE_DEC); return;
-	}
+	case INST_DEC_RM:  w_reg_mem(OPCODE_DEC); return;
+	case INST_DEC_REG: reg_print(OPCODE_DEC); return;
 
-	// first 4 bits
-	switch (b & 0b11110000) {
-	case 0b10110000: // Immediate to register
-		w = nth(b, 3);
-		reg = register_match(b, w);
-		printf("%s %s, %d\n", opcode_fmt(OPCODE_MOV), register_fmt(reg), read_bytes(w));
-		return;
+	case INST_NEG: w_reg_mem(OPCODE_NEG); return;
+
+	case INST_CMP_RM_REG:  rm_reg(OPCODE_CMP, false); return;
+	case INST_CMP_IMM_RM:  imm_rm_sign(OPCODE_CMP); return;
+	case INST_CMP_IMM_ACC: imm_acc(OPCODE_CMP); return;
+
+	case INST_AAS:  printf("%s\n", opcode_fmt(OPCODE_AAS)); return;
+	case INST_DAS:  printf("%s\n", opcode_fmt(OPCODE_DAS)); return;
+	case INST_MUL:  w_reg_mem(OPCODE_MUL); return;
+	case INST_IMUL: w_reg_mem(OPCODE_IMUL); return;
+	case INST_AAM:  printf("%s\n", opcode_fmt(OPCODE_AAM)); i++; return;
+	case INST_DIV:  w_reg_mem(OPCODE_DIV); return;
+	case INST_IDIV: w_reg_mem(OPCODE_IDIV); return;
+	case INST_AAD:  printf("%s\n", opcode_fmt(OPCODE_AAD)); i++; return;
+	case INST_CBW:  printf("%s\n", opcode_fmt(OPCODE_CBW)); return;
+	case INST_CWD:  printf("%s\n", opcode_fmt(OPCODE_CWD)); return;
+
+	case INST_NOT:     w_reg_mem(OPCODE_NOT); return;
+	case INST_SHL_SAL: v_w_reg_mem(OPCODE_SHL); return;
+	case INST_SHR:     v_w_reg_mem(OPCODE_SHR); return;
+	case INST_SAR:     v_w_reg_mem(OPCODE_SAR); return;
+	case INST_ROL:     v_w_reg_mem(OPCODE_ROL); return;
+	case INST_ROR:     v_w_reg_mem(OPCODE_ROR); return;
+	case INST_RCL:     v_w_reg_mem(OPCODE_RCL); return;
+	case INST_RCR:     v_w_reg_mem(OPCODE_RCR); return;
+
+	case INST_AND_RM_REG:  rm_reg(OPCODE_AND, false); return;
+	case INST_AND_IMM_RM:  immediate_to_reg_mem(OPCODE_AND); return;
+	case INST_AND_IMM_ACC: imm_acc(OPCODE_AND); return;
+
+	case INST_TEST_RM_REG:  rm_reg(OPCODE_TEST, false); return;
+	case INST_TEST_IMM_RM:  immediate_to_reg_mem(OPCODE_TEST); return;
+	case INST_TEST_IMM_ACC: imm_acc(OPCODE_TEST); return;
+
+	case INST_OR_RM_REG:  rm_reg(OPCODE_OR, false); return;
+	case INST_OR_IMM_RM:  immediate_to_reg_mem(OPCODE_OR); return;
+	case INST_OR_IMM_ACC: imm_acc(OPCODE_OR); return;
+
+	case INST_XOR_RM_REG:  rm_reg(OPCODE_XOR, false); return;
+	case INST_XOR_IMM_RM:  immediate_to_reg_mem(OPCODE_XOR); return;
+	case INST_XOR_IMM_ACC: imm_acc(OPCODE_XOR); return;
+
+	case INST_REP:  printf("%s ", opcode_fmt(OPCODE_REP)); return;
+	case INST_MOVS: str(OPCODE_MOVS); return;
+	case INST_CMPS: str(OPCODE_CMPS); return;
+	case INST_SCAS: str(OPCODE_SCAS); return;
+	case INST_LODS: str(OPCODE_LODS); return;
+	case INST_STOS: str(OPCODE_STOS); return;
+
+	case INST_CALL_DIRECT_SEG:    direct_segment(OPCODE_CALL); return;
+	case INST_CALL_INDIRECT_SEG:  w_reg_mem(OPCODE_CALL); return;
+	case INST_CALL_DIRECT_ISEG:   direct_intersegment(OPCODE_CALL); return;
+	case INST_CALL_INDIRECT_ISEG: reg_mem_far(OPCODE_CALL); return;
+
+	case INST_JMP_DIRECT_SEG:    direct_segment(OPCODE_JMP); return;
+	case INST_JMP_INDIRECT_SEG:  w_reg_mem(OPCODE_JMP); return;
+	case INST_JMP_DIRECT_ISEG:   direct_intersegment(OPCODE_JMP); return;
+	case INST_JMP_INDIRECT_ISEG: reg_mem_far(OPCODE_JMP); return;
+
+	case INST_RET_SEG:            printf("%s\n", opcode_fmt(OPCODE_RET)); return;
+	case INST_RET_SEG_IMM_TO_SP:  printf("%s %d\n", opcode_fmt(OPCODE_RET), read_bytes(1)); return;
+	case INST_RET_ISEG:           printf("%s\n", opcode_fmt(OPCODE_RETF)); return;
+	case INST_RET_ISEG_IMM_TO_SP: printf("%s %d\n", opcode_fmt(OPCODE_RETF), read_bytes(1)); return;
+
+	case INST_JE_JZ:         jump(OPCODE_JE); return;
+	case INST_JL_JNGE:       jump(OPCODE_JL); return;
+	case INST_JLE_JNG:       jump(OPCODE_JLE); return;
+	case INST_JB_JNAE:       jump(OPCODE_JB); return;
+	case INST_JBE_JNA:       jump(OPCODE_JBE); return;
+	case INST_JP_JPE:        jump(OPCODE_JP); return;
+	case INST_JO:            jump(OPCODE_JO); return;
+	case INST_JS:            jump(OPCODE_JS); return;
+	case INST_JNE_JNZ:       jump(OPCODE_JNE); return;
+	case INST_JNL_JGE:       jump(OPCODE_JNL); return;
+	case INST_JNLE_JG:       jump(OPCODE_JG); return;
+	case INST_JNB_JAE:       jump(OPCODE_JNB); return;
+	case INST_JNBE_JA:       jump(OPCODE_JA); return;
+	case INST_JNP_JPO:       jump(OPCODE_JNP); return;
+	case INST_JNO:           jump(OPCODE_JNO); return;
+	case INST_JNS:           jump(OPCODE_JNS); return;
+	case INST_LOOP:          jump(OPCODE_LOOP); return;
+	case INST_LOOPZ_LOOPE:   jump(OPCODE_LOOPZ); return;
+	case INST_LOOPNZ_LOOPNE: jump(OPCODE_LOOPNZ); return;
+	case INST_JCXZ:          jump(OPCODE_JCXZ); return;
+
+	case INST_INT_TYPE_SPECIFIED: printf("%s %d\n", opcode_fmt(OPCODE_INT), peek()); return;
+	case INST_INT_TYPE_3: printf("%s3\n", opcode_fmt(OPCODE_INT)); return;
+	case INST_INTO: printf("%s\n", opcode_fmt(OPCODE_INTO)); return;
+	case INST_IRET: printf("%s\n", opcode_fmt(OPCODE_IRET)); return;
+
+	case INST_CLC:  printf("%s\n", opcode_fmt(OPCODE_CLC)); return;
+	case INST_CMC:  printf("%s\n", opcode_fmt(OPCODE_CMC)); return;
+	case INST_STC:  printf("%s\n", opcode_fmt(OPCODE_STC)); return;
+	case INST_CLD:  printf("%s\n", opcode_fmt(OPCODE_CLD)); return;
+	case INST_STD:  printf("%s\n", opcode_fmt(OPCODE_STD)); return;
+	case INST_CLI:  printf("%s\n", opcode_fmt(OPCODE_CLI)); return;
+	case INST_STI:  printf("%s\n", opcode_fmt(OPCODE_STI)); return;
+	case INST_HLT:  printf("%s\n", opcode_fmt(OPCODE_HLT)); return;
+	case INST_WAIT: printf("%s\n", opcode_fmt(OPCODE_WAIT)); return;
+	case INST_LOCK: printf("%s ", opcode_fmt(OPCODE_LOCK)); return;
 	}
 }
 
@@ -854,7 +797,7 @@ void disassemble(long fsize) {
 	printf("bits 16\n\n");
 	for (i = 0; i < fsize; i++) {
 		b = buf[i];
-		disassemble_instruction();
+		disassemble_instruction(instruction_match());
 	}
 
 }
