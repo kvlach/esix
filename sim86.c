@@ -128,7 +128,7 @@ char *effective_addr_fmt(effective_addr ea, mode mod, int16_t disp, int flags) {
 	//   "bx + si" -> 7 bytes
 	//   " + " or " - " -> 3 bytes
 	//   2**16 = 65536 -> 5 bytes
-	// A total of 17 bytes.
+	// A total of 22 bytes.
 	char *fmt = (char *)malloc(22);
 	if (fmt == NULL) {
 		return NULL;
